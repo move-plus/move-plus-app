@@ -1,4 +1,4 @@
--
+---
 name: 🐞 Reportar Erro
 about: Algo não está funcionando como deveria
 title: "[BUG] "
