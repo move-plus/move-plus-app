@@ -53,6 +53,7 @@ export default function Profile() {
   const [professionalData, setProfessionalData] =
     useState<ProfessionalData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [authUser, setAuthUser] = useState<any>(null);
 
   useEffect(() => {
     checkAuthAndLoadProfile();
@@ -66,6 +67,7 @@ export default function Profile() {
       navigate("/auth");
       return;
     }
+    setAuthUser(session.user);
 
     // Check user role
     const { data: roles } = await supabase
@@ -73,21 +75,27 @@ export default function Profile() {
       .select("role")
       .eq("user_id", session.user.id);
 
-    if (!roles || roles.length === 0) {
-      navigate("/");
-      return;
-    }
-
-    const role = roles.find(
+    const resolvedRole = roles?.find(
       (r) => r.role === "student" || r.role === "professional"
-    )?.role;
+    )?.role as "student" | "professional" | undefined;
 
-    if (role === "student") {
+    if (resolvedRole === "student") {
       setUserRole("student");
       await loadStudentData(session.user.id);
-    } else if (role === "professional") {
+    } else if (resolvedRole === "professional") {
       setUserRole("professional");
       await loadProfessionalData(session.user.id);
+    } else {
+      // Fallback: tenta descobrir pelo cadastro existente
+      const studentFound = await loadStudentData(session.user.id);
+      if (studentFound) {
+        setUserRole("student");
+      } else {
+        const professionalFound = await loadProfessionalData(session.user.id);
+        if (professionalFound) {
+          setUserRole("professional");
+        }
+      }
     }
 
     setLoading(false);
@@ -101,15 +109,11 @@ export default function Profile() {
       .single();
 
     if (error) {
-      toast({
-        title: "Erro ao carregar dados",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
+      return false;
     }
 
     setStudentData(data);
+    return true;
   };
 
   const loadProfessionalData = async (userId: string) => {
@@ -120,15 +124,11 @@ export default function Profile() {
       .single();
 
     if (error) {
-      toast({
-        title: "Erro ao carregar dados",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
+      return false;
     }
 
     setProfessionalData(data);
+    return true;
   };
 
   const handleStudentSave = async () => {
@@ -197,6 +197,11 @@ export default function Profile() {
       title: "Perfil atualizado",
       description: "Suas informações foram atualizadas com sucesso.",
     });
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
   const handleAvatarUpload = async (
@@ -334,11 +339,17 @@ export default function Profile() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-12">
       <div className="container max-w-3xl">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <CardTitle className="text-3xl flex items-center gap-2">
               <User className="h-8 w-8" />
               Meu Perfil
             </CardTitle>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              {authUser?.email && <span>{authUser.email}</span>}
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                Sair
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {/* Avatar Section */}
@@ -370,15 +381,36 @@ export default function Profile() {
                 className="hidden"
                 onChange={handleAvatarUpload}
               />
-              {uploading && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Enviando foto...
-                </p>
-              )}
+            {uploading && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Enviando foto...
+              </p>
+            )}
+            <div className="mt-4 text-center space-y-1">
+              <p className="text-lg font-semibold">
+                {fullName || "Nome não informado"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {userRole === "student"
+                  ? "Perfil de aluno"
+                  : userRole === "professional"
+                  ? "Perfil de profissional"
+                  : "Perfil"}
+              </p>
             </div>
+          </div>
 
-            {userRole === "student" && studentData && (
-              <div className="space-y-6">
+          {!studentData && !professionalData && (
+            <Card className="mb-8">
+              <CardContent className="text-sm text-muted-foreground">
+                Não encontramos suas informações de perfil. Complete seu
+                cadastro para editar seus dados e foto.
+              </CardContent>
+            </Card>
+          )}
+
+          {userRole === "student" && studentData && (
+            <div className="space-y-6">
                 <div className="space-y-2">
                   <Label
                     htmlFor="full_name"

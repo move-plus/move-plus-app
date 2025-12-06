@@ -1,6 +1,6 @@
-## Ambiente Docker Move+
+## Ambiente Docker FitSenior
 
-Este guia mostra como subir rapidamente o frontend (Vite) e o backend (Express) usando Docker, conectando ambos ao serviço Supabase já existente em produção/staging, com dois usuários de teste criados automaticamente.
+Este guia mostra como subir rapidamente o frontend (Vite) e o backend (FastAPI) usando Docker, conectando ambos ao serviço Supabase já existente em produção/staging, com dois usuários de teste criados automaticamente.
 
 ### 1. Pré‑requisitos
 - Docker Desktop (ou Docker Engine + docker compose v2).
@@ -34,9 +34,9 @@ docker compose --env-file docker-compose.env up --build
 ```
 
 O compose faz o seguinte:
-- sobe o backend em modo `nodemon`, disponível em `http://localhost:${BACKEND_PORT}` (default 3000);
+- sobe o backend em FastAPI com `uvicorn --reload`, disponível em `http://localhost:${BACKEND_PORT}` (default 8000);
 - sobe o frontend em `http://localhost:${FRONTEND_PORT}` (default 5173) apontando para o backend e para o Supabase informado;
-- monta o código como volume, então mudanças locais refletem instantaneamente (frontend via Vite, backend via nodemon).
+- monta o código como volume, então mudanças locais refletem instantaneamente (frontend via Vite, backend via uvicorn).
 
 Para parar tudo:
 ```
@@ -56,12 +56,12 @@ docker compose down -v
 Os e-mails/senhas acima são apenas uma sugestão para manter consistência entre ambientes. Crie esses usuários diretamente no Supabase (via Auth > Users ou via scripts próprios) antes de utilizar o ambiente local, garantindo que tenham os papéis/relacionamentos necessários (`user_roles`, `students`, `professionals` etc.).
 
 ### 5. Fluxo de desenvolvimento
-- **Hot reload**: como os volumes montam o código, salvar arquivos já recarrega o frontend (Vite) e o backend (nodemon). Não é preciso reiniciar o compose.
-- **Novas dependências**: após adicionar dependências no `package.json`, reinicie o serviço correspondente para reinstalar:
+- **Hot reload**: como os volumes montam o código, salvar arquivos já recarrega o frontend (Vite) e o backend (uvicorn `--reload`). Não é preciso reiniciar o compose.
+- **Novas dependências**: após adicionar dependências no `package.json` ou `requirements.txt`, reinicie o serviço correspondente para reinstalar:
   ```
-  docker compose restart backend
-  # ou
   docker compose restart frontend
+  # ou
+  docker compose restart backend
   ```
 - **Mudanças extensas ou Dockerfile**: se alterar comandos ou versões base, rode novamente com build:
   ```
@@ -77,7 +77,7 @@ Os e-mails/senhas acima são apenas uma sugestão para manter consistência entr
 O arquivo `docker-compose.env` já encaminha:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_API_URL` (`http://backend:3000` dentro da rede do compose)
+- `VITE_API_URL` (`http://backend:8000` dentro da rede do compose)
 
 Se preferir apontar para outro backend (por exemplo, API hospedada), altere `VITE_API_URL` antes de subir o compose.
 
@@ -98,7 +98,7 @@ Se preferir apontar para outro backend (por exemplo, API hospedada), altere `VIT
 Ajuste `FRONTEND_PORT`/`BACKEND_PORT` no `docker-compose.env` ou pare o processo que está usando a porta.
 
 #### 🌐 Frontend não consegue conectar ao backend
-Verifique se `VITE_API_URL` no `docker-compose.env` está como `http://backend:3000` (nome do serviço do Docker, não `localhost`).
+Verifique se `VITE_API_URL` no `docker-compose.env` está como `http://backend:8000` (nome do serviço do Docker, não `localhost`).
 
 Pronto! Com isso, qualquer pessoa do time consegue subir o ambiente local espelhando o Supabase em produção, já com credenciais prontas para testar fluxo de aluno e profissional.
 

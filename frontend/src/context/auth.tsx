@@ -41,19 +41,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // OPÇÃO 1: Buscar role da tabela students
-    supabase
-      .from("students")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        // Se existir em students, é student
-        setRole(data ? "student" : null);
-      });
+    const fetchRole = async () => {
+      // Verifica se é estudante
+      const { data: student } = await supabase
+        .from("students")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    // OPÇÃO 2: Ou simplesmente definir como student por padrão
-    // setRole("student");
+      if (student) {
+        setRole("student");
+        return;
+      }
+
+      // Verifica se é profissional
+      const { data: professional } = await supabase
+        .from("professionals")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (professional) {
+        setRole("professional");
+        return;
+      }
+
+      // Consulta tabela user_roles como fallback
+      const { data: userRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      setRole((userRole?.role as UserRole) ?? null);
+    };
+
+    fetchRole();
   }, [user]);
 
   const signOut = async () => {

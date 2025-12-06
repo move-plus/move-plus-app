@@ -64,6 +64,7 @@ const SearchClasses = () => {
       setClasses(classesWithCounts);
     } catch (error) {
       console.error("Error fetching classes:", error);
+      setClasses([]);
     } finally {
       setLoading(false);
     }

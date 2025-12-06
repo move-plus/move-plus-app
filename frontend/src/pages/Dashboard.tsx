@@ -19,28 +19,15 @@ import {
   BookOpen,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Tables } from "@/integrations/supabase/types";
+
+type ClassData = Tables<"classes"> & {
+  enrollments: { count: number }[];
+};
 
 interface Professional {
   id: string;
   full_name: string;
-}
-
-interface ClassData {
-  id: string;
-  activity: string;
-  schedule: string;
-  location: string;
-  price: number;
-  enrollments: { count: number }[];
-}
-
-interface Demand {
-  id: string;
-  activity: string;
-  neighborhood: string;
-  schedule: string;
-  num_interested: number;
-  location: string;
 }
 
 const Dashboard = () => {
@@ -73,7 +60,7 @@ const Dashboard = () => {
       }
 
       setProfessional(prof);
-      await loadData(prof.id);
+      await loadData(prof.user_id);
     };
 
     checkAuth();
@@ -219,7 +206,7 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              classes.map((cls) => (
+              classes.map((cls: ClassData) => (
                 <Card
                   key={cls.id}
                   className="shadow-soft hover:shadow-medium transition-shadow cursor-pointer"

@@ -59,6 +59,7 @@
 ### Pré-requisitos
 
 - Node.js 18+ instalado
+- Python 3.11+ instalado
 - Conta no [Supabase](https://supabase.com)
 - Conta no [Vercel](https://vercel.com) (para deploy)
 - Conta no [Render](https://render.com) (para deploy do backend)
@@ -84,7 +85,7 @@ cp .env.example .env
 ```env
 VITE_SUPABASE_URL=sua_supabase_url
 VITE_SUPABASE_PUBLISHABLE_KEY=sua_supabase_anon_key
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:8000
 ```
 
 ```bash
@@ -94,35 +95,31 @@ npm run dev
 
 Acesse: `http://localhost:5173`
 
-#### Backend
+#### Backend (FastAPI)
 
 ```bash
 # Entre na pasta backend
 cd backend
 
+# (Opcional) Crie um ambiente virtual
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
 # Instale as dependências
-npm install
+pip install -r requirements.txt
 
 # Configure as variáveis de ambiente
-cp .env.example .env
-# Edite o .env com suas credenciais
-```
-
-**`backend/.env`**
-```env
-PORT=3000
-SUPABASE_URL=sua_supabase_url
-SUPABASE_SERVICE_KEY=sua_service_key
-SUPABASE_ANON_KEY=sua_anon_key
-NODE_ENV=development
+cp ../docker-compose.env.example .env
+# ou crie um backend/.env com:
+# SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_ANON_KEY, ALLOWED_ORIGINS, BACKEND_PORT
 ```
 
 ```bash
 # Execute o servidor
-npm run dev
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Acesse: `http://localhost:3000/health`
+Acesse: `http://localhost:8000/health`
 
 ---
 
@@ -153,19 +150,11 @@ Execute o SQL no Supabase SQL Editor:
 ```
 fitsenior/
 ├── 📂 backend/
-│   ├── src/
-│   │   ├── middleware/
-│   │   │   └── auth.js
-│   │   ├── routes/
-│   │   │   ├── classes.js
-│   │   │   ├── demands.js
-│   │   │   ├── enrollments.js
-│   │   │   ├── forum.js
-│   │   │   ├── messages.js
-│   │   │   └── me.js
-│   │   └── supabaseClient.js
-│   ├── server.js
-│   └── package.json
+│   ├── app/
+│   │   ├── core/          # Configurações e clientes
+│   │   ├── routers/       # Rotas FastAPI
+│   │   └── schemas/       # Modelos Pydantic
+│   └── requirements.txt
 │
 ├── 📂 src/
 │   ├── components/       # Componentes reutilizáveis
@@ -207,16 +196,16 @@ fitsenior/
 3. Conecte seu repositório
 4. Configure:
    - **Root Directory:** `backend`
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port 8000`
 5. Adicione as variáveis de ambiente:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_KEY`
    - `SUPABASE_ANON_KEY`
-   - `NODE_ENV=production`
+   - `ALLOWED_ORIGINS=https://fitsenior.vercel.app`
 6. Deploy!
 
-**URL da API:** [fitsenior-backend.onrender.com](https://fitsenior-backend.onrender.com)
+**URL da API:** `https://<seu-backend>.onrender.com`
 
 ---
 

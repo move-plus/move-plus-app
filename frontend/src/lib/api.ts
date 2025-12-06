@@ -1,10 +1,19 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_PREFIX = '/api';
+
+const buildEndpoint = (endpoint: string) => {
+  const normalized = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const withPrefix = normalized.startsWith(API_PREFIX)
+    ? normalized
+    : `${API_PREFIX}${normalized}`;
+  return `${API_URL}${withPrefix}`;
+};
 
 export const api = {
   async fetch(endpoint: string, options: RequestInit = {}) {
     const token = localStorage.getItem('supabase.auth.token'); // ou de onde você guarda o token
     
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetch(buildEndpoint(endpoint), {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -17,7 +26,12 @@ export const api = {
       throw new Error(`API Error: ${response.statusText}`);
     }
 
-    return response.json();
+    if (response.status === 204) {
+      return null;
+    }
+
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
   },
 
   // Métodos auxiliares

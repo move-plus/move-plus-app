@@ -33,6 +33,17 @@ const ClassDetails = () => {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [forumMessages, setForumMessages] = useState<any[]>([]);
   const [classmates, setClassmates] = useState<any[]>([]);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(
+    null
+  );
+  const [mapUrl, setMapUrl] = useState<string | null>(null);
+  const [distanceInfo, setDistanceInfo] = useState<{
+    distanceText: string;
+    durationText: string;
+  } | null>(null);
+  const [locationStatus, setLocationStatus] = useState(
+    "Ative a localizacao para estimar a distancia ate a aula."
+  );
 
   useEffect(() => {
     fetchClassDetails();
@@ -47,6 +58,87 @@ const ClassDetails = () => {
     }
   }, [isEnrolled]);
 
+  useEffect(() => {
+    if (!classData?.location) return;
+
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    const destination = encodeURIComponent(classData.location);
+
+    if (!apiKey) {
+      setLocationStatus("Adicione a chave VITE_GOOGLE_MAPS_API_KEY no .env para ver o mapa.");
+      return;
+    }
+
+    setDistanceInfo(null);
+    setUserLocation(null);
+    setLocationStatus("Solicitando sua localizacao para tracar a rota...");
+
+    // Mostra somente o destino enquanto ainda nao temos origem
+    setMapUrl(`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${destination}`);
+
+    if (!navigator.geolocation) {
+      setLocationStatus("Seu navegador nao permite localizacao automatica.");
+      return;
+    }
+
+    setLocationStatus("Solicitando sua localizacao...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setUserLocation(coords);
+        setLocationStatus("Calculando distancia...");
+
+        setMapUrl(
+          `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${coords.lat},${coords.lng}&destination=${destination}&mode=walking`
+        );
+      },
+      () => {
+        setLocationStatus(
+          "Nao foi possivel obter sua localizacao. Mostrando apenas o local da aula."
+        );
+        // Mantem o mapa apenas com o destino
+        setMapUrl(`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${destination}`);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [classData?.location]);
+
+  useEffect(() => {
+    const fetchDistance = async () => {
+      if (!userLocation || !classData?.location) return;
+
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) return;
+
+      try {
+        const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${userLocation.lat},${userLocation.lng}&destinations=${encodeURIComponent(
+          classData.location
+        )}&mode=walking&key=${apiKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        const element = data?.rows?.[0]?.elements?.[0];
+
+        if (element?.status === "OK") {
+          setDistanceInfo({
+            distanceText: element.distance?.text || "",
+            durationText: element.duration?.text || "",
+          });
+          setLocationStatus("");
+        } else {
+          setLocationStatus("Não foi possível calcular a distância agora.");
+        }
+      } catch (error) {
+        console.error("Erro ao calcular distância:", error);
+        setLocationStatus("Não foi possível calcular a distância agora.");
+      }
+    };
+
+    fetchDistance();
+  }, [userLocation, classData?.location]);
+
   const fetchClassDetails = async () => {
     try {
       const { data: classInfo, error: classError } = await supabase
@@ -55,7 +147,9 @@ const ClassDetails = () => {
         .eq("id", id)
         .single();
 
-      if (classError) throw classError;
+      if (classError || !classInfo) {
+        throw classError || new Error("Turma não encontrada");
+      }
       setClassData(classInfo);
 
       const { data: profData, error: profError } = await supabase
@@ -64,8 +158,9 @@ const ClassDetails = () => {
         .eq("id", classInfo.professional_id)
         .single();
 
-      if (profError) throw profError;
-      setProfessional(profData);
+      if (!profError && profData) {
+        setProfessional(profData);
+      }
 
       const { count } = await supabase
         .from("enrollments")
@@ -196,6 +291,14 @@ const ClassDetails = () => {
   };
 
   const handleEnroll = async () => {
+    if (classData?.source === "mock") {
+      toast({
+        title: "Exemplo de turma",
+        description: "Este é um exemplo para visualizar o mapa e os detalhes.",
+      });
+      return;
+    }
+
     if (enrollmentCount >= classData.max_students) {
       toast({
         title: "Turma cheia",
@@ -247,6 +350,10 @@ const ClassDetails = () => {
   }
 
   const availableSpots = classData.max_students - enrollmentCount;
+  const originParam = userLocation ? `${userLocation.lat},${userLocation.lng}` : "";
+  const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    classData.location
+  )}&travelmode=walking${originParam ? `&origin=${originParam}` : ""}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background py-12 px-4">
@@ -320,6 +427,52 @@ const ClassDetails = () => {
                   <span className="text-xl font-bold text-primary">
                     R$ {classData.price.toFixed(2)}
                   </span>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Distância até a aula</h3>
+                </div>
+                {distanceInfo && (
+                  <Badge variant="secondary">
+                    {distanceInfo.distanceText} • {distanceInfo.durationText}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+              {distanceInfo
+                ? `Você está a ${distanceInfo.distanceText} (aprox. ${distanceInfo.durationText}) do local informado.`
+                : locationStatus}
+              </p>
+              {mapUrl ? (
+                <>
+                  <div className="aspect-video w-full overflow-hidden rounded-lg border shadow-sm">
+                    <iframe
+                      title="Mapa até a aula"
+                      src={mapUrl}
+                      className="h-full w-full"
+                      loading="lazy"
+                      allowFullScreen
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button asChild variant="outline" size="sm" className="mt-3">
+                      <a href={routeUrl} target="_blank" rel="noreferrer">
+                        Abrir rota no Google Maps
+                      </a>
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  Configure a chave do Google Maps para visualizar o mapa.
                 </div>
               )}
             </div>
