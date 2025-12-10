@@ -20,6 +20,7 @@ const corsOptions = {
     : '*',
   credentials: true,
 };
+print(process.env.NODE_ENV);
 
 app.use(cors(corsOptions));
 app.use(express.json());

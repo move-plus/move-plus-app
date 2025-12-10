@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      // Verifica se é profissional
+     // Verifica se é profissional
       const { data: professional } = await supabase
         .from("professionals")
         .select("id")
@@ -66,14 +66,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      // Consulta tabela user_roles como fallback
-      const { data: userRole } = await supabase
-        .from("user_roles")
+     // Fallback: ler role direto da tabela profiles (coluna role)
+      const { data: profile } = await supabase
+        .from("profiles")
         .select("role")
-        .eq("user_id", user.id)
+        .eq("id", user.id)
         .maybeSingle();
 
-      setRole((userRole?.role as UserRole) ?? null);
+      if (profile?.role) {
+        const mapped: UserRole =
+          profile.role === "instructor" ? "professional" : (profile.role as UserRole);
+        setRole(mapped);
+        return;
+      }
     };
 
     fetchRole();
