@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Heart, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
+
 import { useAuth } from "@/context/auth";
 
 const Header = () => {
@@ -10,7 +11,6 @@ const Header = () => {
   const location = useLocation();
 
   const navItemsUnauth = [
-    { path: "/", label: "Início" },
     { path: "/auth", label: "Login" },
   ];
 
@@ -28,21 +28,20 @@ const Header = () => {
     { path: "/chat", label: "Mensagens" },
   ];
 
-  const navItems = !user || role === null ? [] : role === "student" ? navItemsStudents : navItemsProfessionals;
+  const navItems = !user || role === null ? navItemsUnauth : role === "student" ? navItemsStudents : navItemsProfessionals;
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b shadow-soft">
+    <header className="sticky top-0 z-50 bg-[#5F94E2]/95 backdrop-blur-sm border-b shadow-soft">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Heart className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold">
-              Fit<span className="text-primary">Sênior</span>
-            </span>
+          <div className="flex items-center">
+            <img 
+              src="/move-alt.png"
+              alt="Move+ Logo"
+              className="w-20 h-20 object-contain"
+            />
           </div>
 
           {/* Desktop Navigation */}
