@@ -2,90 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* ID VISUAL MOVE+
+  Primary (Green): #25C588 -> hsl(157 68% 46%)
+  Secondary (Dark Blue): #1756AC -> hsl(215 76% 38%)
+  Accent (Light Blue): #5F94E2 -> hsl(216 72% 63%)
+  
+  Fonts: Cocogoose (Primary/Titles), Raleway (Secondary/Body)
 */
 
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 210 24% 16%;
+    --foreground: 215 76% 10%; /* Ajustado para um tom muito escuro do azul secundário */
 
     --card: 0 0% 100%;
-    --card-foreground: 210 24% 16%;
+    --card-foreground: 215 76% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 24% 16%;
+    --popover-foreground: 215 76% 15%;
 
-    --primary: 165 70% 45%;
+    /* Primary: Verde (#25C588) */
+    --primary: 157 68% 46%;
     --primary-foreground: 0 0% 100%;
     
-    --primary-light: 165 70% 65%;
-    --primary-dark: 165 70% 35%;
+    --primary-light: 157 68% 66%;
+    --primary-dark: 157 68% 36%;
 
-    --secondary: 25 90% 60%;
+    /* Secondary: Azul Escuro (#1756AC) */
+    --secondary: 215 76% 38%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 216 20% 96%;
+    --muted-foreground: 215 20% 50%;
 
-    --accent: 165 70% 95%;
-    --accent-foreground: 165 70% 25%;
+    /* Accent: Baseado no Azul Claro (#5F94E2) para fundos suaves */
+    --accent: 216 72% 96%; 
+    --accent-foreground: 215 76% 38%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 165 70% 45%;
+    --border: 216 30% 91%;
+    --input: 216 30% 91%;
+    --ring: 157 68% 46%; /* Ring usa a cor primária */
 
     --radius: 1rem;
     
-    --gradient-primary: linear-gradient(135deg, hsl(165 70% 45%), hsl(165 70% 60%));
-    --gradient-secondary: linear-gradient(135deg, hsl(25 90% 60%), hsl(35 90% 65%));
-    --gradient-hero: linear-gradient(to bottom, hsl(165 70% 97%), hsl(0 0% 100%));
+    /* Gradiente combinando o Verde Primário com o Azul Claro da ID Visual */
+    --gradient-primary: linear-gradient(135deg, hsl(157 68% 46%), hsl(216 72% 63%));
     
-    --shadow-soft: 0 4px 20px -4px hsl(165 70% 45% / 0.15);
-    --shadow-medium: 0 10px 40px -10px hsl(165 70% 45% / 0.25);
+    /* Gradiente combinando o Azul Escuro com o Azul Claro */
+    --gradient-secondary: linear-gradient(135deg, hsl(215 76% 38%), hsl(216 72% 63%));
+    
+    --gradient-hero: linear-gradient(to bottom, hsl(157 68% 97%), hsl(0 0% 100%));
+    
+    --shadow-soft: 0 4px 20px -4px hsl(215 76% 38% / 0.10);
+    --shadow-medium: 0 10px 40px -10px hsl(215 76% 38% / 0.20);
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 210 30% 8%;
+    --background: 215 50% 6%;
     --foreground: 0 0% 98%;
 
-    --card: 210 30% 10%;
+    --card: 215 50% 8%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 210 30% 10%;
+    --popover: 215 50% 8%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 165 70% 55%;
-    --primary-foreground: 210 30% 8%;
+    /* Ajustes para modo escuro mantendo a identidade */
+    --primary: 157 68% 46%;
+    --primary-foreground: 0 0% 100%;
     
-    --primary-light: 165 70% 65%;
-    --primary-dark: 165 70% 45%;
+    --primary-light: 157 68% 56%;
+    --primary-dark: 157 68% 36%;
 
-    --secondary: 25 90% 65%;
-    --secondary-foreground: 210 30% 8%;
+    --secondary: 216 72% 63%; /* No dark mode, usamos o azul claro como secundário para contraste */
+    --secondary-foreground: 215 76% 10%;
 
-    --muted: 210 30% 15%;
+    --muted: 215 30% 15%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 165 70% 15%;
-    --accent-foreground: 165 70% 85%;
+    --accent: 215 40% 15%;
+    --accent-foreground: 157 68% 85%;
 
     --destructive: 0 63% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 210 30% 18%;
-    --input: 210 30% 18%;
-    --ring: 165 70% 55%;
+    --border: 215 30% 18%;
+    --input: 215 30% 18%;
+    --ring: 157 68% 55%;
     
-    --gradient-primary: linear-gradient(135deg, hsl(165 70% 45%), hsl(165 70% 55%));
-    --gradient-secondary: linear-gradient(135deg, hsl(25 90% 55%), hsl(35 90% 60%));
-    --gradient-hero: linear-gradient(to bottom, hsl(210 30% 10%), hsl(210 30% 8%));
+    --gradient-primary: linear-gradient(135deg, hsl(157 68% 46%), hsl(157 68% 35%));
+    --gradient-secondary: linear-gradient(135deg, hsl(215 76% 45%), hsl(216 72% 55%));
+    --gradient-hero: linear-gradient(to bottom, hsl(215 50% 10%), hsl(215 50% 6%));
     
     --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.3);
     --shadow-medium: 0 10px 40px -10px hsl(0 0% 0% / 0.4);
@@ -99,6 +111,13 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Cocogoose', sans-serif; /* Fonte Secundária/Corpo */
+  }
+
+  /* Aplicação da Fonte Primária para Títulos */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cocogoose', sans-serif;
+    @apply font-bold;
   }
 }
 
