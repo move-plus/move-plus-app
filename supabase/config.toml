@@ -1,1 +1,4 @@
-project_id = "ipnxldsdldvzhohycrjc"
+project_id = "ufysgkrkxrbqdvvjodgt"
+
+VITE_SUPABASE_URL=https://ufysgkrkxrbqdvvjodgt.supabase.co
+VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=sb_publishable_qESAe65yT5MBDTHa9jQ1QQ_O34cbU2S

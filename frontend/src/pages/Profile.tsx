@@ -69,23 +69,7 @@ export default function Profile() {
     }
     setAuthUser(session.user);
 
-    // Check user role
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", session.user.id);
-
-    const resolvedRole = roles?.find(
-      (r) => r.role === "student" || r.role === "professional"
-    )?.role as "student" | "professional" | undefined;
-
-    if (resolvedRole === "student") {
-      setUserRole("student");
-      await loadStudentData(session.user.id);
-    } else if (resolvedRole === "professional") {
-      setUserRole("professional");
-      await loadProfessionalData(session.user.id);
-    } else {
+   
       // Fallback: tenta descobrir pelo cadastro existente
       const studentFound = await loadStudentData(session.user.id);
       if (studentFound) {
@@ -96,7 +80,7 @@ export default function Profile() {
           setUserRole("professional");
         }
       }
-    }
+    
 
     setLoading(false);
   };

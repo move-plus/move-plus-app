@@ -10,8 +10,8 @@ router = APIRouter(prefix="/enrollments", tags=["enrollments"])
 async def list_my_enrollments(user=Depends(get_current_user), supabase=Depends(get_supabase)):
     response = (
         supabase.table("enrollments")
-        .select("*, classes(*, profiles(full_name))")
-        .eq("user_id", user["id"])
+        .select("*, classes(*, professionals(full_name))")
+        .eq("student_id", user["id"])
         .order("created_at", desc=True)
         .execute()
     )
@@ -22,7 +22,7 @@ async def list_my_enrollments(user=Depends(get_current_user), supabase=Depends(g
 async def list_enrollments_for_class(class_id: str, user=Depends(get_current_user), supabase=Depends(get_supabase)):
     response = (
         supabase.table("enrollments")
-        .select("*, profiles(full_name, avatar_url)")
+        .select("*, students(full_name, avatar_url)")
         .eq("class_id", class_id)
         .execute()
     )
@@ -38,7 +38,7 @@ async def create_enrollment(payload: dict, user=Depends(get_current_user), supab
     existing_response = (
         supabase.table("enrollments")
         .select("id")
-        .eq("user_id", user["id"])
+        .eq("student_id", user["id"])
         .eq("class_id", class_id)
         .limit(1)
         .execute()
@@ -49,7 +49,7 @@ async def create_enrollment(payload: dict, user=Depends(get_current_user), supab
 
     class_response = (
         supabase.table("classes")
-        .select("capacity, max_students")
+        .select("max_students")
         .eq("id", class_id)
         .single()
         .execute()
@@ -58,7 +58,7 @@ async def create_enrollment(payload: dict, user=Depends(get_current_user), supab
     if not class_data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aula não encontrada")
 
-    capacity = class_data.get("capacity") or class_data.get("max_students")
+    capacity = class_data.get("max_students")
 
     enrollment_count_response = (
         supabase.table("enrollments")
@@ -73,7 +73,7 @@ async def create_enrollment(payload: dict, user=Depends(get_current_user), supab
 
     response = (
         supabase.table("enrollments")
-        .insert([{"user_id": user["id"], "class_id": class_id}])
+        .insert([{"student_id": user["id"], "class_id": class_id}])
         .select("*")
         .single()
         .execute()
@@ -87,7 +87,7 @@ async def delete_enrollment(enrollment_id: str, user=Depends(get_current_user), 
         supabase.table("enrollments")
         .delete()
         .eq("id", enrollment_id)
-        .eq("user_id", user["id"])
+        .eq("student_id", user["id"])
         .execute()
     )
     handle_response(response)

@@ -27,31 +27,34 @@ const Index = () => {
   }, []);
 
   const checkUserRole = async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-      if (!session) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-      if (!roleData) {
-        setShowRoleSelection(true);
-      }
-    } catch (error) {
-      console.error("Error checking role:", error);
-    } finally {
+    if (!session) {
       setLoading(false);
+      return;
     }
-  };
+
+    // Verifica role na tabela profiles (coluna role)
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!profile?.role) {
+      setShowRoleSelection(true);
+    }
+  } catch (error) {
+    console.error("Error checking role:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading) {
     return (
