@@ -14,7 +14,7 @@ services:
     image: node:20
     working_dir: /app
     volumes:
-      - ./:/app
+      - ./frontend:/app
       - frontend-node-modules:/app/node_modules
     env_file:
       - docker-compose.env

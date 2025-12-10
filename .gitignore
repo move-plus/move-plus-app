@@ -1,4 +1,6 @@
-# Logs
+
+\__pycache__
+
 logs
 *.log
 npm-debug.log*
@@ -25,6 +27,3 @@ dist-ssr
 .env
 .env.local
 .env.production
-
-__pycache__/
-*.pyc
