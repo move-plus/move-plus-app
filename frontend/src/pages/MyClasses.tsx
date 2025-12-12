@@ -54,16 +54,15 @@ const MyClasses = () => {
           class_id,
           classes (
             id,
-            activity,
+            title,
             schedule,
-            location,
-            max_students,
+            location_address,
+            capacity,
             description
           )
         `
         )
-        .eq("student_id", user.id)
-        .eq("status", "enrolled");
+        .eq("user_id", user.id);
 
       if (enrollError) throw enrollError;
 
@@ -156,7 +155,7 @@ const MyClasses = () => {
                     className="flex items-start justify-between"
                   >
                     <span className="hover:text-primary transition-colors">
-                      {classItem.activity}
+                      {classItem.title}
                     </span>
                   </CardTitle>
                   <CardDescription className="line-clamp-2">
@@ -170,7 +169,7 @@ const MyClasses = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{classItem.location}</span>
+                    <span>{classItem.location_address}</span>
                   </div>
 
                   <div className="pt-4 border-t space-y-2">

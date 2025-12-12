@@ -153,7 +153,7 @@ const ClassDetails = () => {
       setClassData(classInfo);
 
       const { data: profData, error: profError } = await supabase
-        .from("professionals")
+        .from("profiles")
         .select("*")
         .eq("id", classInfo.professional_id)
         .single();
@@ -181,12 +181,10 @@ const ClassDetails = () => {
 
   const fetchClassmates = async () => {
     try {
-      // 1. Busca os enrollments da turma
       const { data: enrollments, error: enrollError } = await supabase
         .from("enrollments")
-        .select("id, student_id")
+        .select("id, user_id")
         .eq("class_id", id)
-        .eq("status", "enrolled");
 
       if (enrollError) throw enrollError;
 
@@ -195,30 +193,28 @@ const ClassDetails = () => {
         return;
       }
 
-      // 2. Busca os dados dos estudantes usando os user_ids
-      const studentIds = enrollments.map((e) => e.student_id);
+      const studentIds = enrollments.map((e) => e.user_id);
 
       const { data: students, error: studentsError } = await supabase
-        .from("students")
-        .select("user_id, full_name, email, phone, gender")
-        .in("user_id", studentIds);
+        .from("profiles")
+        .select("id, full_name, email, phone, gender")
+        .in("id", studentIds);
 
       if (studentsError) throw studentsError;
 
-      // 3. Combina os dados
       const classmates = enrollments.map((enrollment) => {
         const student = students?.find(
-          (s) => s.user_id === enrollment.student_id
+          (s) => s.id === enrollment.user_id
         );
 
         return {
           enrollment_id: enrollment.id,
-          student_id: enrollment.student_id,
+          student_id: enrollment.user_id,
           full_name: student?.full_name || "Nome não encontrado",
           email: student?.email,
           phone: student?.phone,
           gender: student?.gender,
-          avatar_url: "" //student.avatar_url,
+          avatar_url: "" // student?.avatar_url,
         };
       });
 
@@ -238,7 +234,7 @@ const ClassDetails = () => {
         .from("enrollments")
         .select("*")
         .eq("class_id", id)
-        .eq("student_id", user.id)
+        .eq("user_id", user.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -299,7 +295,7 @@ const ClassDetails = () => {
       return;
     }
 
-    if (enrollmentCount >= classData.max_students) {
+    if (enrollmentCount >= classData.capacity) {
       toast({
         title: "Turma cheia",
         description: "Esta turma já atingiu o número máximo de alunos.",
@@ -317,9 +313,7 @@ const ClassDetails = () => {
 
       const { error } = await supabase.from("enrollments").insert({
         class_id: id,
-        student_id: user.id,
         user_id: user.id,
-        status: "enrolled",
       });
 
       if (error) throw error;
@@ -350,10 +344,10 @@ const ClassDetails = () => {
     return <div className="container py-12">Turma não encontrada</div>;
   }
 
-  const availableSpots = classData.max_students - enrollmentCount;
+  const availableSpots = classData.capacity - enrollmentCount;
   const originParam = userLocation ? `${userLocation.lat},${userLocation.lng}` : "";
   const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    classData.location
+    classData.location_address
   )}&travelmode=walking${originParam ? `&origin=${originParam}` : ""}`;
 
   return (
@@ -386,7 +380,7 @@ const ClassDetails = () => {
               <div className="flex items-center gap-3">
                 <MapPin className="h-5 w-5 text-muted-foreground" />
                 <span className="font-medium">Local:</span>
-                <span>{classData.location}</span>
+                <span>{classData.location_address}</span>
               </div>
 
               <div className="flex items-center gap-3">

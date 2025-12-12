@@ -60,7 +60,10 @@ const Dashboard = () => {
 
     const { data: classesData } = await supabase
       .from("classes")
-      .select()
+      .select(`
+        *,
+        enrollments ( count )
+      `)
       .eq("professional_id", professionalId)
       .order('created_at', { ascending: false });
 
@@ -91,6 +94,11 @@ const Dashboard = () => {
       </div>
     );
   }
+
+  const totalStudents = classes.reduce((total, cls) => {
+    const count = cls.enrollments?.[0]?.count || 0;
+    return total + count;
+  }, 0);
 
   return (
     <div className="min-h-screen bg-gradient-hero">
@@ -133,7 +141,7 @@ const Dashboard = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{0}</div>
+              <div className="text-2xl font-bold">{totalStudents}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Em {classes.length} turma{classes.length !== 1 ? "s" : ""}
               </p>

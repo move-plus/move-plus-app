@@ -39,13 +39,26 @@ const SearchClasses = () => {
           *,
           profiles:professional_id (
             full_name
+          ),
+          enrollments (
+            count
           )
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      setClasses(data || []);
+      const classesFormatted = data.map((cls) => {
+        const enrolledCount = cls.enrollments[0]?.count || 0
+        
+        return {
+          ...cls,
+          enrolled_count: enrolledCount,
+          spots_left: cls.capacity - enrolledCount 
+        }
+      })
+
+      setClasses(classesFormatted);
     } catch (error) {
       console.error("Error fetching classes:", error);
       setClasses([]);
@@ -59,7 +72,7 @@ const SearchClasses = () => {
       searchLocation === "" ||
       classItem.location_address.toLowerCase().includes(searchLocation.toLowerCase());
     const matchesCategory =
-      categoryFilter === "all" || classItem.activity === categoryFilter;
+      categoryFilter === "all" || classItem.category === categoryFilter;
 
     return matchesLocation && matchesCategory;
   });
@@ -116,11 +129,11 @@ const SearchClasses = () => {
                   <SelectContent>
                     <SelectItem value="all">Todas as atividades</SelectItem>
                     
-                    {Array.from(new Set(classes.map((c) => c.activity)))
-                      .filter((activity) => activity) // <--- ADICIONE ISSO: Remove null, undefined e vazios
-                      .map((activity) => (
-                        <SelectItem key={activity} value={activity}>
-                          {activity}
+                    {Array.from(new Set(classes.map((c) => c.category)))
+                      .filter((category) => category)
+                      .map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -175,8 +188,8 @@ const SearchClasses = () => {
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="w-4 h-4 text-primary flex-shrink-0" />
                   <span>
-                    {classItem.availableSpots > 0
-                      ? `${classItem.availableSpots} vagas disponíveis`
+                    {classItem.spots_left > 0
+                      ? `${classItem.spots_left} vagas disponíveis`
                       : "Turma cheia"}
                   </span>
                 </div>
@@ -190,9 +203,9 @@ const SearchClasses = () => {
                 </div>
                 <Button
                   onClick={() => navigate(`/turma-aluno/${classItem.id}`)}
-                  disabled={classItem.availableSpots <= 0}
+                  disabled={classItem.spots_left <= 0}
                 >
-                  {classItem.availableSpots > 0 ? "Matricular" : "Cheia"}
+                  {classItem.spots_left > 0 ? "Matricular" : "Cheia"}
                 </Button>
               </CardFooter>
             </Card>
