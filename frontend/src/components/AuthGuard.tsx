@@ -6,7 +6,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
   const location = useLocation();
 
-  const publicRoutes = ["/", "/auth", ];
+  const publicRoutes = [
+    "/", 
+    "/login",
+    "/login-profissional",
+    "/signup",];
 
   if (loading) {
     return (
@@ -18,7 +22,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     if (!publicRoutes.includes(location.pathname)) {
-      return <Navigate to="/auth" replace />;
+      return <Navigate to="/login" replace />;
     }
     return <>{children}</>;
   }
@@ -31,7 +35,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (role) {
-    if (["/", "/auth", "/onboarding"].includes(location.pathname)) {
+    if (["/", "/login", "/onboarding"].includes(location.pathname)) {
       if (role === "student") return <Navigate to="/minhas-turmas" replace />;
       if (role === "professional") return <Navigate to="/dashboard" replace />;
     }

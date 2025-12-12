@@ -47,46 +47,34 @@ const CreateClass = () => {
     title: demandData?.activity || "",
     description: "",
     category: "",
-    location: demandData?.location || "",
-    schedule: demandData?.schedule || "",
-    maxStudents: "",
+    schedule: "",  
+    location_address: demandData?.location || "",
+    capacity: "",
     price: "",
     level: "",
   });
 
-useEffect(() => {
-  const checkAuth = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  useEffect(() => {
+    const checkAuth = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
+      if (!user) {
+        toast({
+          title: "Acesso Negado",
+          description: "Você precisa estar logado como profissional para acessar esta página.",
+          variant: "destructive",
+        });
+        navigate("/login-profissional");
+        return;
+      }
 
-    const { data: prof, error: profError } = await supabase
-      .from("professionals")
-      .select("id, user_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+      setProfessionalId(user.id);
+    };
 
-    if (profError) {
-      console.error(profError);
-      navigate("/cadastro-profissional");
-      return;
-    }
-
-    if (!prof) {
-      navigate("/cadastro-profissional");
-      return;
-    }
-
-    setProfessionalId(prof.id); // ✅ agora é o id da tabela professionals
-  };
-
-  checkAuth();
-}, [navigate]);
+    checkAuth();
+  }, [navigate, toast]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,7 +83,7 @@ useEffect(() => {
     if (
       !formData.title ||
       !formData.category ||
-      !formData.location ||
+      !formData.location_address ||
       !formData.schedule ||
       !professionalId
     ) {
@@ -104,21 +92,25 @@ useEffect(() => {
         description: "Por favor, preencha todos os campos obrigatórios.",
         variant: "destructive",
       });
+
+      console.log("professionalId ausente no handleSubmit:", professionalId);
+      console.log("Dados do formulário incompletos:", formData);
       return;
     }
 
+    console.log("professionalId enviado no INSERT:", professionalId);
     setLoading(true);
-console.log("professionalId enviado no INSERT:", professionalId);
     try {
       const { error } = await supabase.from("classes").insert({
         professional_id: professionalId,
-        activity: formData.title,
+        title: formData.title,
         description: formData.description,
+        category: formData.category,
         schedule: formData.schedule,
-        max_students: parseInt(formData.maxStudents) || 10,
-        location: formData.location,
+        capacity: parseInt(formData.capacity) || 10,
+        location_address: formData.location_address,
         price: parseFloat(formData.price) || 0,
-        demand_id: demandData?.demandId || null,
+        level: formData.level,
       });
 
       if (error) throw error;
@@ -258,15 +250,15 @@ console.log("professionalId enviado no INSERT:", professionalId);
 
                   {/* Location */}
                   <div className="space-y-2">
-                    <Label htmlFor="location" className="text-base">
+                    <Label htmlFor="location_address" className="text-base">
                       <MapPin className="w-4 h-4 inline mr-2" />
                       Localização *
                     </Label>
                     <Input
-                      id="location"
+                      id="location_address"
                       placeholder="Ex: Parque da Cidade, Rua das Flores, 123"
-                      value={formData.location}
-                      onChange={(e) => handleChange("location", e.target.value)}
+                      value={formData.location_address}
+                      onChange={(e) => handleChange("location_address", e.target.value)}
                       className="text-base h-12"
                       required
                     />
@@ -291,17 +283,17 @@ console.log("professionalId enviado no INSERT:", professionalId);
                   {/* Max Students and Price */}
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="maxStudents" className="text-base">
+                      <Label htmlFor="capacity" className="text-base">
                         <Users className="w-4 h-4 inline mr-2" />
                         Vagas Disponíveis
                       </Label>
                       <Input
-                        id="maxStudents"
+                        id="capacity"
                         type="number"
                         placeholder="Ex: 15"
-                        value={formData.maxStudents}
+                        value={formData.capacity}
                         onChange={(e) =>
-                          handleChange("maxStudents", e.target.value)
+                          handleChange("capacity", e.target.value)
                         }
                         className="text-base h-12"
                         min="1"

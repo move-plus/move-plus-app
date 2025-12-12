@@ -3,7 +3,7 @@ import Header from "./components/Header";
 import Index from "./pages/Index";
 import SearchClasses from "./pages/SearchClasses";
 import CreateClass from "./pages/CreateClass";
-import Auth from "./pages/Auth";
+import Auth from "./pages/LoginEmail";
 import ProfessionalRegistration from "./pages/ProfessionalRegistration";
 import StudentRegistration from "./pages/StudentRegistration";
 import Dashboard from "./pages/Dashboard";
@@ -16,19 +16,21 @@ import { ProtectedRoute } from "@/components/protectedRoute";
 import Profile from "./pages/Profile";
 import PrivateChat from "./pages/PrivateChat";
 import LoginPhone from "./pages/LoginPhone";
+import LoginEmail from "./pages/LoginEmail";
 import Onboarding from "./pages/Onboarding";
 import AuthGuard from "@/components/AuthGuard"; 
+import SignUpEmail from "./pages/SignUpEmail";
 
 export function Routes() {
   return (
     <AuthGuard>
       <RoutesDOM>
         <Route path="/" element={<Index />} />
-        <Route path="/auth" element={<LoginPhone />} />
-
+        <Route path="/login" element={<LoginPhone />} />
+        <Route path="/login-profissional" element={<LoginEmail />} />
+        <Route path="/signup" element={<SignUpEmail />} />
         <Route path="/onboarding" element={<Onboarding />} />
         
-        {/* ESTUDANTES */}
         <Route
           path="/minhas-turmas"
           element={
@@ -45,6 +47,14 @@ export function Routes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/buscar-turmas"
+          element={
+            <ProtectedRoute requireRole="student">
+              <SearchClasses />
+            </ProtectedRoute>
+          }
+        />
 
         {/* PROFISSIONAIS */}
         <Route
@@ -55,8 +65,38 @@ export function Routes() {
             </ProtectedRoute>
           }
         />
-        {/* ... outras rotas de professional ... */}
-
+        <Route
+          path="/cadastro-profissional"
+          element={
+            <ProtectedRoute requireRole="professional">
+              <ProfessionalRegistration />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/turmas"
+          element={
+            <ProtectedRoute requireRole="professional">
+              <MyClasses />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/turma/:id"
+          element={
+            <ProtectedRoute requireRole="professional">
+              <ClassManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/criar-turma"
+          element={
+            <ProtectedRoute requireRole="professional">
+              <CreateClass />
+            </ProtectedRoute>
+          }
+        />
         {/* COMUNS (Perfil, Chat) */}
         <Route
           path="/perfil"

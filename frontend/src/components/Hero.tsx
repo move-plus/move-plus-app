@@ -31,7 +31,7 @@ const Hero = () => {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link to="/cadastrar-aulas">
+              <Link to="/login-profissional">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto">
                   <Users className="w-5 h-5" />
                   Sou Profissional

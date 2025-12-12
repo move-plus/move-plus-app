@@ -11,18 +11,18 @@ const Header = () => {
   const location = useLocation();
 
   const navItemsUnauth = [
-    { path: "/auth", label: "Login" },
+    { path: "/login", label: "Login" },
   ];
 
   const navItemsStudents = [
     { path: "/minhas-turmas", label: "Minhas Turmas" },
-    { path: "/buscar-aulas", label: "Buscar Aulas" },
+    { path: "/buscar-turmas", label: "Buscar Aulas" },
     { path: "/perfil", label: "Perfil" },
     { path: "/chat", label: "Mensagens" },
   ];
 
   const navItemsProfessionals = [
-    { path: "/cadastrar-aulas", label: "Cadastrar aula" },
+    { path: "/criar-turma", label: "Cadastrar aula" },
     { path: "/dashboard", label: "Dashboard" },
     { path: "/perfil", label: "Perfil" },
     { path: "/chat", label: "Mensagens" },

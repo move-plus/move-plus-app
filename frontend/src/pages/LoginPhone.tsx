@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Phone, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
 
 export default function LoginPhone() {
   const { loading } = useAuth();
@@ -125,6 +126,11 @@ export default function LoginPhone() {
             </button>
           </form>
         )}
+      </div>
+      <div className="mt-8 text-center">
+        <Link to="/login-profissional" className="text-sm text-gray-500 hover:text-[#E76F51]">
+          É professor? Entre aqui
+        </Link>
       </div>
     </div>
   );

@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .maybeSingle();
 
     setRole(data?.role ?? null);
+    console.log("Fetched role:", data?.role);
     return
   };
 

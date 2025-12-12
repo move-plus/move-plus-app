@@ -21,46 +21,35 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 
-type ClassData = Tables<"classes"> & {
-  enrollments: { count: number }[];
-};
-
-interface Professional {
-  id: string;
-  full_name: string;
-}
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [professional, setProfessional] = useState<Professional | null>(null);
-  const [classes, setClasses] = useState<ClassData[]>([]);
-  const [demands, setDemands] = useState<Demand[]>([]);
+  const [professional, setProfessional] = useState<any>(null);
+  const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user },} = await supabase.auth.getUser();
       if (!user) {
-        navigate("/auth");
+        toast({
+          title: "Acesso Negado",
+          description: "Você precisa estar logado como profissional para acessar esta página.",
+          variant: "destructive",
+        });
+        navigate("/login-profissional");
         return;
       }
 
-      const { data: prof } = await supabase
-        .from("professionals")
+      const { data: professional_data } = await supabase
+        .from("profiles")
         .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .eq("id", user?.id)
+        .single();
 
-      if (!prof) {
-        navigate("/cadastro-profissional");
-        return;
-      }
 
-      setProfessional(prof);
-      await loadData(prof.id);
+      setProfessional({ id: professional_data.id, full_name: professional_data.full_name });
+      await loadData(professional_data.id);
     };
 
     checkAuth();
@@ -71,21 +60,11 @@ const Dashboard = () => {
 
     const { data: classesData } = await supabase
       .from("classes")
-      .select(
-        `
-        *,
-        enrollments:enrollments(count)
-      `
-      )
-      .eq("professional_id", professionalId);
-
-    const { data: demandsData } = await supabase
-      .from("demands")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select()
+      .eq("professional_id", professionalId)
+      .order('created_at', { ascending: false });
 
     setClasses(classesData || []);
-    setDemands(demandsData || []);
     setLoading(false);
   };
 
@@ -104,15 +83,6 @@ const Dashboard = () => {
       },
     });
   };
-
-  const totalRevenue = classes.reduce((sum, cls) => {
-    const students = cls.enrollments[0]?.count || 0;
-    return sum + cls.price * students;
-  }, 0);
-
-  const totalStudents = classes.reduce((sum, cls) => {
-    return sum + (cls.enrollments[0]?.count || 0);
-  }, 0);
 
   if (loading) {
     return (
@@ -147,7 +117,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                R$ {totalRevenue.toFixed(2)}
+                R$ 0.00
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Acumulado de todas as turmas
@@ -163,7 +133,7 @@ const Dashboard = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalStudents}</div>
+              <div className="text-2xl font-bold">{0}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Em {classes.length} turma{classes.length !== 1 ? "s" : ""}
               </p>
@@ -178,7 +148,7 @@ const Dashboard = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{demands.length}</div>
+              <div className="text-2xl font-bold">{0}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Oportunidades disponíveis
               </p>
@@ -206,99 +176,37 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              classes.map((cls: ClassData) => (
-                <Card
-                  key={cls.id}
-                  className="shadow-soft hover:shadow-medium transition-shadow cursor-pointer"
-                  onClick={() => navigate(`/turma/${cls.id}`)}
-                >
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>{cls.activity}</span>
-                      <span className="text-sm font-normal text-muted-foreground">
-                        {cls.enrollments[0]?.count || 0} alunos
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-center text-sm">
-                      <Clock className="w-4 h-4 mr-2" />
-                      {cls.schedule}
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      {cls.location}
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <DollarSign className="w-4 h-4 mr-2" />
-                      R$ {cls.price.toFixed(2)}/mês por aluno
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="demands" className="space-y-4">
-            {demands.map((demand) => (
-              <Card key={demand.id} className="shadow-soft">
-                <CardHeader>
-                  <CardTitle>{demand.activity}</CardTitle>
-                  <CardDescription>
-                    {demand.num_interested} idosos interessados
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center text-sm">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {demand.neighborhood} - {demand.location}
-                  </div>
-                  <div className="flex items-center text-sm">
-                    <Clock className="w-4 h-4 mr-2" />
-                    {demand.schedule}
-                  </div>
-                  <Button
-                    onClick={() => createClassFromDemand(demand)}
-                    className="w-full mt-4"
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {classes.map((classItem) => (
+                  <Card 
+                    key={classItem.id} 
+                    className="shadow-soft" 
+                    onClick={() => navigate(`/turma/${classItem.id}`)}
                   >
-                    Criar Turma
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="financial" className="space-y-4">
-            <Card className="shadow-soft">
-              <CardHeader>
-                <CardTitle>Receita por Turma</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {classes.map((cls) => {
-                  const students = cls.enrollments[0]?.count || 0;
-                  const revenue = cls.price * students;
-                  const percentage =
-                    totalRevenue > 0 ? (revenue / totalRevenue) * 100 : 0;
-
-                  return (
-                    <div key={cls.id} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{cls.activity}</span>
-                        <span className="text-sm text-muted-foreground">
-                          R$ {revenue.toFixed(2)} ({percentage.toFixed(1)}%)
-                        </span>
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium">
+                        {classItem.title}
+                      </CardTitle>
+                      <CardDescription className="text-sm text-muted-foreground">
+                        {classItem.activity}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{classItem.location_address}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{classItem.schedule}</span>
+                        </div>
                       </div>
-                      <div className="w-full bg-secondary rounded-full h-2">
-                        <div
-                          className="bg-primary rounded-full h-2 transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
