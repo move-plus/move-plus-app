@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -9,7 +9,7 @@ interface AuthContextType {
   role: UserRole;
   loading: boolean;
   signOut: () => Promise<void>;
-  fetchRole: () => Promise<void>;
+  fetchRole: (userId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,79 +18,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
+  
+  const isMounted = useRef(false);
+
+  const fetchRole = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    setRole(data?.role ?? null);
+    return
+  };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
-      setLoading(false);
-    });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      if (!role) fetchRole(session?.user?.id || "");
+
+      setLoading(false);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
-
-  const fetchRole = async () => {
-      // Verifica se é estudante
-      const { data: student } = await supabase
-        .from("students")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (student) {
-        setRole("student");
-        return;
-      }
-
-     // Verifica se é profissional
-      const { data: professional } = await supabase
-        .from("professionals")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (professional) {
-        setRole("professional");
-        return;
-      }
-
-     // Fallback: ler role direto da tabela profiles (coluna role)
-      // const { data: profile } = await supabase
-      //   .from("profiles")
-      //   .select("role")
-      //   .eq("id", user.id)
-      //   .maybeSingle();
-
-      // if (profile?.role) {
-      //   const mapped: UserRole =
-      //     profile.role === "instructor" ? "professional" : (profile.role as UserRole);
-      //   setRole(mapped);
-      //   return;
-      // }
-    };
-
-  useEffect(() => {
-    if (!user) {
-      setRole(null);
-      return;
-    }
-
-    fetchRole();
-  }, [user]);
+  }, []); 
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+    setRole(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signOut, fetchRole }}>
+    <AuthContext.Provider value={{ user, role, loading, signOut, fetchRole}}>
       {children}
     </AuthContext.Provider>
   );
@@ -98,8 +61,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth deve ser usado dentro de um AuthProvider");
-  }
+  if (context === undefined) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };

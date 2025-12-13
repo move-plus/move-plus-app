@@ -72,12 +72,7 @@ const ClassManagement = () => {
     loadClassData();
     loadStudents();
     loadMessages();
-    loadFrequencyData();
   }, [id]);
-
-  useEffect(() => {
-    loadAttendanceForDate();
-  }, [selectedDate, students]);
 
   const loadClassData = async () => {
     const { data } = await supabase
@@ -92,12 +87,10 @@ const ClassManagement = () => {
 
   const loadStudents = async () => {
     try {
-      // 1. Busca enrollments
       const { data: enrollments, error: enrollError } = await supabase
         .from("enrollments")
-        .select("id, student_id")
-        .eq("class_id", id)
-        .eq("status", "enrolled");
+        .select("id, user_id")
+        .eq("class_id", id);
 
       if (enrollError) throw enrollError;
 
@@ -106,49 +99,27 @@ const ClassManagement = () => {
         return;
       }
 
-      // 2. Busca perfis dos estudantes - CORRIGIDO
-      const studentIds = enrollments.map((e) => e.student_id);
+      const studentIds = enrollments.map((e) => e.user_id);
 
-      // const { data: profiles, error: profilesError } = await supabase
-      //   .from("profiles")
-      //   .select("id, full_name")
-      //   .in("id", studentIds);
-
-      // if (profilesError) {
-      //   console.error("Error fetching profiles:", profilesError);
-      // }
-
-      // 3. Se profiles está vazio, tenta buscar da tabela students
       let studentsInfo = null;
         const { data: studentsData, error: studentsError } = await supabase
-          .from("students")
-          .select("user_id, full_name")
-          .in("user_id", studentIds);
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", studentIds);
 
         studentsInfo = studentsData;
-
-      // 4. Combina dados e busca faltas
+      if (studentsError) throw studentsError;
+      
       const studentsWithAbsences = await Promise.all(
         enrollments.map(async (enrollment) => {
-          //const profile = profiles?.find((p) => p.id === enrollment.student_id);
-          const student = studentsInfo?.find(
-            (s) => s.user_id === enrollment.student_id
+          const profile = studentsInfo?.find(
+            (s: any) => s.id === enrollment.user_id
           );
-
-          const { count } = await supabase
-            .from("attendance")
-            .select("*", { count: "exact", head: true })
-            .eq("enrollment_id", enrollment.id)
-            .eq("present", false);
-
+          const fullName = profile ? profile.full_name : "Sem nome";
           return {
-            id: enrollment.student_id,
+            id: enrollment.user_id,
             enrollment_id: enrollment.id,
-            // full_name: profile?.full_name || student?.full_name || "Sem nome",
-            full_name:  student?.full_name || "Sem nome",
-            absences: count || 0,
-            total_classes: 0,
-            attendance_rate: 0,
+            full_name: fullName,
           };
         })
       );
@@ -156,103 +127,6 @@ const ClassManagement = () => {
       setStudents(studentsWithAbsences);
     } catch (error) {
       console.error("Error loading students:", error);
-    }
-  };
-
-  const loadAttendanceForDate = async () => {
-    if (students.length === 0) return;
-
-    const attendanceMap: Record<string, boolean> = {};
-
-    for (const student of students) {
-      const { data } = await supabase
-        .from("attendance")
-        .select("present")
-        .eq("enrollment_id", student.enrollment_id)
-        .eq("date", selectedDate)
-        .maybeSingle();
-
-      if (data) {
-        attendanceMap[student.id] = data.present;
-      }
-    }
-
-    setAttendance(attendanceMap);
-  };
-
-  const loadFrequencyData = async () => {
-    try {
-      // 1. Busca enrollments
-      const { data: enrollments, error: enrollError } = await supabase
-        .from("enrollments")
-        .select("id, student_id")
-        .eq("class_id", id)
-        .eq("status", "active");
-
-      if (enrollError) throw enrollError;
-
-      if (!enrollments || enrollments.length === 0) {
-        setFrequencyData([]);
-        return;
-      }
-
-      // 2. Busca dados dos estudantes
-      const studentIds = enrollments.map((e) => e.student_id);
-
-      // Tenta buscar de profiles primeiro
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", studentIds);
-
-      // Se profiles estiver vazio, busca de students
-      let studentsData = null;
-      if (!profiles || profiles.length === 0) {
-        const { data } = await supabase
-          .from("students")
-          .select("user_id, full_name")
-          .in("user_id", studentIds);
-        studentsData = data;
-      }
-
-      // 3. Calcula estatísticas de frequência
-      const frequencyStats = await Promise.all(
-        enrollments.map(async (enrollment) => {
-          // Busca o nome do estudante
-          const profile = profiles?.find((p) => p.id === enrollment.student_id);
-          const student = studentsData?.find(
-            (s) => s.user_id === enrollment.student_id
-          );
-          const fullName =
-            profile?.full_name || student?.full_name || "Sem nome";
-
-          // Busca registros de presença
-          const { data: attendanceRecords } = await supabase
-            .from("attendance")
-            .select("present")
-            .eq("enrollment_id", enrollment.id);
-
-          const totalClasses = attendanceRecords?.length || 0;
-          const absences =
-            attendanceRecords?.filter((a) => !a.present).length || 0;
-          const presences = totalClasses - absences;
-          const attendanceRate =
-            totalClasses > 0 ? (presences / totalClasses) * 100 : 0;
-
-          return {
-            id: enrollment.student_id,
-            enrollment_id: enrollment.id,
-            full_name: fullName,
-            absences,
-            total_classes: totalClasses,
-            attendance_rate: attendanceRate,
-          };
-        })
-      );
-
-      setFrequencyData(frequencyStats);
-    } catch (error) {
-      console.error("Error loading frequency data:", error);
     }
   };
 
@@ -311,7 +185,6 @@ const ClassManagement = () => {
         )} atualizada.`,
       });
       loadStudents();
-      loadFrequencyData();
     }
   };
 

@@ -35,52 +35,30 @@ const SearchClasses = () => {
     try {
       const { data, error } = await supabase
         .from("classes")
-        .select(
-          `
+        .select(`
           *,
-          professionals (full_name)
-        `
-        )
+          profiles:professional_id (
+            full_name
+          ),
+          enrollments (
+            count
+          )
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // 2. Pega o usuário atual
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
+      const classesFormatted = data.map((cls) => {
+        const enrolledCount = cls.enrollments[0]?.count || 0
+        
+        return {
+          ...cls,
+          enrolled_count: enrolledCount,
+          spots_left: cls.capacity - enrolledCount 
+        }
+      })
 
-      // 3. Busca as matrículas do usuário
-      const { data: userEnrollments } = await supabase
-        .from("enrollments")
-        .select("class_id")
-        .eq("student_id", userId);
-
-      const enrolledClassIds = userEnrollments?.map((e) => e.class_id) || [];
-
-      // 4. Filtra classes removendo as que o usuário está matriculado
-      const filteredClasses = (data || []).filter(
-        (classItem) => !enrolledClassIds.includes(classItem.id)
-      );
-
-      // Get enrollment counts for each class
-      const classesWithCounts = await Promise.all(
-        (filteredClasses || []).map(async (classItem) => {
-          const { count } = await supabase
-            .from("enrollments")
-            .select("*", { count: "exact", head: true })
-            .eq("class_id", classItem.id)
-
-          console.log("count ",count)
-
-          return {
-            ...classItem,
-            enrollmentCount: count || 0,
-            availableSpots: classItem.max_students - (count || 0),
-          };
-        })
-      );
-
-      setClasses(classesWithCounts);
+      setClasses(classesFormatted);
     } catch (error) {
       console.error("Error fetching classes:", error);
       setClasses([]);
@@ -92,9 +70,9 @@ const SearchClasses = () => {
   const filteredClasses = classes.filter((classItem) => {
     const matchesLocation =
       searchLocation === "" ||
-      classItem.location.toLowerCase().includes(searchLocation.toLowerCase());
+      classItem.location_address.toLowerCase().includes(searchLocation.toLowerCase());
     const matchesCategory =
-      categoryFilter === "all" || classItem.activity === categoryFilter;
+      categoryFilter === "all" || classItem.category === categoryFilter;
 
     return matchesLocation && matchesCategory;
   });
@@ -123,12 +101,12 @@ const SearchClasses = () => {
           <CardContent className="p-6">
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-base">
+                <Label htmlFor="location_address" className="text-base">
                   <Search className="w-4 h-4 inline mr-2" />
                   Localização
                 </Label>
                 <Input
-                  id="location"
+                  id="location_address"
                   placeholder="Digite sua localização..."
                   value={searchLocation}
                   onChange={(e) => setSearchLocation(e.target.value)}
@@ -150,13 +128,14 @@ const SearchClasses = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas as atividades</SelectItem>
-                    {Array.from(new Set(classes.map((c) => c.activity))).map(
-                      (activity) => (
-                        <SelectItem key={activity} value={activity}>
-                          {activity}
+                    
+                    {Array.from(new Set(classes.map((c) => c.category)))
+                      .filter((category) => category)
+                      .map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
                         </SelectItem>
-                      )
-                    )}
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -186,7 +165,7 @@ const SearchClasses = () => {
                   <h3 className="text-xl font-bold">{classItem.activity}</h3>
                   <p className="text-muted-foreground">
                     Prof.{" "}
-                    {classItem.professionals?.full_name || "Não especificado"}
+                    {classItem.profiles?.full_name || "Não especificado"}
                   </p>
                 </div>
               </CardHeader>
@@ -200,7 +179,7 @@ const SearchClasses = () => {
 
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>{classItem.location}</span>
+                  <span>{classItem.location_address}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="w-4 h-4 text-primary flex-shrink-0" />
@@ -209,8 +188,8 @@ const SearchClasses = () => {
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="w-4 h-4 text-primary flex-shrink-0" />
                   <span>
-                    {classItem.availableSpots > 0
-                      ? `${classItem.availableSpots} vagas disponíveis`
+                    {classItem.spots_left > 0
+                      ? `${classItem.spots_left} vagas disponíveis`
                       : "Turma cheia"}
                   </span>
                 </div>
@@ -224,9 +203,9 @@ const SearchClasses = () => {
                 </div>
                 <Button
                   onClick={() => navigate(`/turma-aluno/${classItem.id}`)}
-                  disabled={classItem.availableSpots <= 0}
+                  disabled={classItem.spots_left <= 0}
                 >
-                  {classItem.availableSpots > 0 ? "Matricular" : "Cheia"}
+                  {classItem.spots_left > 0 ? "Matricular" : "Cheia"}
                 </Button>
               </CardFooter>
             </Card>

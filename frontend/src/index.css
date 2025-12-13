@@ -12,8 +12,8 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 215 76% 10%; /* Ajustado para um tom muito escuro do azul secundário */
+    --background: 216 72% 63%
+    --foreground: 215 76% 10%; 
 
     --card: 0 0% 100%;
     --card-foreground: 215 76% 15%;
@@ -21,8 +21,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 76% 15%;
 
-    /* Primary: Verde (#25C588) */
-    --primary: 157 68% 46%;
+    /* Primary: Azul (#5F94E2) */
+    --primary: 216 72% 63%;
     --primary-foreground: 0 0% 100%;
     
     --primary-light: 157 68% 66%;
@@ -35,16 +35,16 @@
     --muted: 216 20% 96%;
     --muted-foreground: 215 20% 50%;
 
-    /* Accent: Baseado no Azul Claro (#5F94E2) para fundos suaves */
-    --accent: 216 72% 96%; 
-    --accent-foreground: 215 76% 38%;
+    /* Accent: Verde (#25C588) para fundos suaves */
+    --accent:  216 72% 63%; 
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 216 30% 91%;
     --input: 216 30% 91%;
-    --ring: 157 68% 46%; /* Ring usa a cor primária */
+    --ring: 157 68% 46%;
 
     --radius: 1rem;
     
@@ -54,7 +54,7 @@
     /* Gradiente combinando o Azul Escuro com o Azul Claro */
     --gradient-secondary: linear-gradient(135deg, hsl(215 76% 38%), hsl(216 72% 63%));
     
-    --gradient-hero: linear-gradient(to bottom, hsl(157 68% 97%), hsl(0 0% 100%));
+    --gradient-hero: linear-gradient(to bottom, hsl(211, 80%, 90%), hsl(0 0% 100%));
     
     --shadow-soft: 0 4px 20px -4px hsl(215 76% 38% / 0.10);
     --shadow-medium: 0 10px 40px -10px hsl(215 76% 38% / 0.20);

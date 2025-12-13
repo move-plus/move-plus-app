@@ -42,21 +42,18 @@ const ProfessionalRegistration = () => {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        navigate("/auth");
+        navigate("/signup");
         return;
       }
       setUserId(user.id);
 
-      // Check if professional profile already exists
       const { data: professional } = await supabase
         .from("professionals")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("id", user.id)
         .maybeSingle();
 
-      if (professional) {
-        navigate("/dashboard");
-      }
+      if (professional) navigate("/dashboard");
     };
 
     checkUser();
@@ -69,14 +66,10 @@ const ProfessionalRegistration = () => {
     setLoading(true);
 
     try {
-      // Insert professional data
       const { error: profError } = await supabase.from("professionals").insert({
-        user_id: userId,
+        id: userId,
         cref: formData.cref,
-        full_name: formData.fullName,
-        birth_date: formData.birthDate,
         specialty: formData.specialty,
-        cpf: formData.cpf,
       });
 
       if (profError) throw profError;
@@ -88,8 +81,7 @@ const ProfessionalRegistration = () => {
 
        await fetchRole()
 
-      // ✅ Mudança aqui: redireciona para /profile após cadastro
-      navigate("/Dashboard");
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Erro no cadastro:", error);
       toast({
@@ -153,36 +145,6 @@ const ProfessionalRegistration = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="fullName" className="text-base">
-                    <User className="w-4 h-4 inline mr-2" />
-                    Nome Completo *
-                  </Label>
-                  <Input
-                    id="fullName"
-                    placeholder="Digite seu nome completo"
-                    value={formData.fullName}
-                    onChange={(e) => handleChange("fullName", e.target.value)}
-                    className="text-base h-12"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="birthDate" className="text-base">
-                    <Calendar className="w-4 h-4 inline mr-2" />
-                    Data de Nascimento *
-                  </Label>
-                  <Input
-                    id="birthDate"
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={(e) => handleChange("birthDate", e.target.value)}
-                    className="text-base h-12"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="specialty" className="text-base">
                     <GraduationCap className="w-4 h-4 inline mr-2" />
                     Especialidade *
@@ -192,21 +154,6 @@ const ProfessionalRegistration = () => {
                     placeholder="Ex: Yoga, Pilates, Musculação"
                     value={formData.specialty}
                     onChange={(e) => handleChange("specialty", e.target.value)}
-                    className="text-base h-12"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cpf" className="text-base">
-                    <CreditCard className="w-4 h-4 inline mr-2" />
-                    CPF *
-                  </Label>
-                  <Input
-                    id="cpf"
-                    placeholder="000.000.000-00"
-                    value={formData.cpf}
-                    onChange={(e) => handleChange("cpf", e.target.value)}
                     className="text-base h-12"
                     required
                   />
