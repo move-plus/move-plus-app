@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,11 @@ import {
   User,
   MessageSquare,
   MessageCircle,
+  CreditCard,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+import api from "@/lib/api";
 
 const ClassDetails = () => {
   const { id } = useParams();
@@ -44,6 +48,9 @@ const ClassDetails = () => {
   const [locationStatus, setLocationStatus] = useState(
     "Ative a localizacao para estimar a distancia ate a aula."
   );
+  const [currentEnrollmentId, setCurrentEnrollmentId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'loading' | 'paid' | 'pending' | 'none'>('loading');
+  const [paymentData, setPaymentData] = useState<any>(null);
 
   useEffect(() => {
     fetchClassDetails();
@@ -240,6 +247,10 @@ const ClassDetails = () => {
 
       if (error) throw error;
       setIsEnrolled(!!data);
+
+      if (data) {
+        setCurrentEnrollmentId(data.id);
+      }
     } catch (error: any) {
       console.error("Error checking enrollment:", error);
     }
@@ -337,6 +348,86 @@ const ClassDetails = () => {
       });
     } finally {
       setEnrolling(false);
+    }
+  };
+
+  // Verificar status do pagamento
+  const checkPaymentStatus = useCallback(async () => {
+    if (!currentEnrollmentId || !classData?.price || classData.price === 0) {
+      setPaymentStatus('none');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("enrollment_id", currentEnrollmentId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setPaymentData(data);
+        setPaymentStatus(data.status === 'paid' ? 'paid' : 'pending');
+      } else {
+        setPaymentStatus('pending');
+      }
+    } catch (error: any) {
+      console.error('Error checking payment:', error);
+      setPaymentStatus('pending');
+    }
+  }, [currentEnrollmentId, classData?.price]);
+
+  useEffect(() => {
+    if (currentEnrollmentId) {
+      checkPaymentStatus();
+    }
+  }, [currentEnrollmentId, checkPaymentStatus]);
+
+  const handlePayment = async () => {
+    if (!currentEnrollmentId || !classData) return;
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para realizar o pagamento.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("payments")
+        .insert({
+          class_id: id,
+          enrollment_id: currentEnrollmentId,
+          student_id: user.id,
+          amount: classData.price,
+          status: "paid",
+          payment_date: new Date().toISOString().split('T')[0]
+        });
+
+      if (error) throw error;
+      
+      toast({
+        title: "Pagamento confirmado!",
+        description: "Seu pagamento foi registrado com sucesso.",
+      });
+      
+      checkPaymentStatus();
+    } catch (error: any) {
+      console.error('Error processing payment:', error);
+      toast({
+        title: "Erro ao processar pagamento",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -570,6 +661,60 @@ const ClassDetails = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Adicionar seção de pagamento após o badge de matrícula */}
+                {isEnrolled && classData?.price && classData.price > 0 && (
+                  <Card className="mt-6">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5" />
+                        Pagamento
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {paymentStatus === 'loading' && (
+                        <div className="text-center py-4">Carregando informações de pagamento...</div>
+                      )}
+                      
+                      {paymentStatus === 'paid' && paymentData && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2 text-green-700 font-medium mb-2">
+                            <CheckCircle2 className="h-5 w-5" />
+                            Pagamento Confirmado
+                          </div>
+                          <p className="text-sm text-green-600">
+                            Valor: R$ {paymentData.amount.toFixed(2)}
+                          </p>
+                          <p className="text-sm text-green-600">
+                            Data: {new Date(paymentData.payment_date).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {paymentStatus === 'pending' && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2 text-yellow-700 font-medium mb-2">
+                            <AlertCircle className="h-5 w-5" />
+                            Pagamento Pendente
+                          </div>
+                          <p className="text-sm text-yellow-600 mb-4">
+                            Valor da mensalidade: R$ {classData.price.toFixed(2)}
+                          </p>
+                          <Button 
+                            onClick={handlePayment}
+                            className="w-full"
+                          >
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Realizar Pagamento
+                          </Button>
+                          <p className="text-xs text-gray-500 text-center mt-2">
+                            Clique para registrar o pagamento da mensalidade
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </>
             )}
           </CardContent>

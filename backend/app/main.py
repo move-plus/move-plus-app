@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import classes, demands, enrollments, forum, me, messages
+from app.routers import classes, demands, enrollments, forum, me, messages, payments
 
 app = FastAPI(title="FitSenior API", version="2.0.0")
 
@@ -38,4 +38,5 @@ app.include_router(classes.router, prefix=settings.api_prefix)
 app.include_router(enrollments.router, prefix=settings.api_prefix)
 app.include_router(forum.router, prefix=settings.api_prefix)
 app.include_router(messages.router, prefix=settings.api_prefix)
+app.include_router(payments.router,prefix=settings.api_prefix)
 

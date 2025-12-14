@@ -11,7 +11,17 @@ const buildEndpoint = (endpoint: string) => {
 
 export const api = {
   async fetch(endpoint: string, options: RequestInit = {}) {
-    const token = localStorage.getItem('supabase.auth.token'); // ou de onde você guarda o token
+    // Buscar token do Supabase corretamente
+    const supabaseAuth = localStorage.getItem('sb-mxegxtsndzuxmxdittgg-auth-token');
+    let token = null;
+    if (supabaseAuth) {
+      try {
+        const authData = JSON.parse(supabaseAuth);
+        token = authData?.access_token;
+      } catch (e) {
+        console.error('Error parsing auth token:', e);
+      }
+    }
     
     const response = await fetch(buildEndpoint(endpoint), {
       ...options,
@@ -23,25 +33,26 @@ export const api = {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.statusText} - ${errorText}`);
     }
 
     if (response.status === 204) {
-      return null;
+      return { data: null };
     }
 
-    const text = await response.text();
-    return text ? JSON.parse(text) : null;
+    const data = await response.json();
+    return { data };
   },
 
   // Métodos auxiliares
-  get: (endpoint: string) => api.fetch(endpoint),
-  post: (endpoint: string, data: any) => 
-    api.fetch(endpoint, { method: 'POST', body: JSON.stringify(data) }),
-  put: (endpoint: string, data: any) => 
-    api.fetch(endpoint, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (endpoint: string) => 
-    api.fetch(endpoint, { method: 'DELETE' }),
+  get: async (endpoint: string) => await api.fetch(endpoint),
+  post: async (endpoint: string, data: any) => 
+    await api.fetch(endpoint, { method: 'POST', body: JSON.stringify(data) }),
+  put: async (endpoint: string, data: any) => 
+    await api.fetch(endpoint, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: async (endpoint: string) => 
+    await api.fetch(endpoint, { method: 'DELETE' }),
 };
 
 export default api;
