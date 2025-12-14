@@ -1,5 +1,5 @@
 import { useAuth } from "@/context/auth";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, matchPath } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -10,7 +10,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     "/", 
     "/login",
     "/login-profissional",
-    "/signup",];
+    "/signup",
+    "/turma-aluno/:id",
+    "/buscar-turmas"
+  ];
+
+  const isPublicRoute = publicRoutes.some(route => 
+    matchPath({ path: route, end: true }, location.pathname)
+  );
 
   if (loading) {
     return (
@@ -21,7 +28,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    if (!publicRoutes.includes(location.pathname)) {
+    if (!isPublicRoute) {
+      console.log('Redirecting to home from AuthGuard');
+      console.log('Current path:', location.pathname);
       return <Navigate to="/" replace />;
     }
     return <>{children}</>;
@@ -35,7 +44,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (role) {
-    if (publicRoutes.includes(location.pathname)) {
+    if (publicRoutes.includes(location.pathname) || location.pathname === "/onboarding") {
       if (role === "student") return <Navigate to="/minhas-turmas" replace />;
       if (role === "professional") return <Navigate to="/dashboard" replace />;
     }

@@ -30,28 +30,14 @@ export function Routes() {
         <Route path="/login-profissional" element={<LoginEmail />} />
         <Route path="/signup" element={<SignUpEmail />} />
         <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/buscar-turmas" element={<SearchClasses />} />
+        <Route path="/turma-aluno/:id" element={<ClassDetails />} />
         
         <Route
           path="/minhas-turmas"
           element={
             <ProtectedRoute requireRole="student">
               <MyClasses />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/turma-aluno/:id"
-          element={
-            <ProtectedRoute requireRole="student">
-              <ClassDetails />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/buscar-turmas"
-          element={
-            <ProtectedRoute requireRole="student">
-              <SearchClasses />
             </ProtectedRoute>
           }
         />

@@ -310,7 +310,10 @@ const ClassDetails = () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
+      if (!user) {
+        navigate("/login");
+        return;
+      }
 
       const { error } = await supabase.from("enrollments").insert({
         class_id: id,
