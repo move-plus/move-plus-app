@@ -195,21 +195,18 @@ export type Database = {
           created_at: string | null;
           id: string;
           message: string;
-          user_id: string;
         };
         Insert: {
           class_id: string;
           created_at?: string | null;
           id?: string;
           message: string;
-          user_id: string;
         };
         Update: {
           class_id?: string;
           created_at?: string | null;
           id?: string;
           message?: string;
-          user_id?: string;
         };
         Relationships: [
           {

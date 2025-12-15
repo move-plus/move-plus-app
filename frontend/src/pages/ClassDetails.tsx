@@ -251,11 +251,10 @@ const ClassDetails = () => {
         .from("forum_messages")
         .select(
           `
-          *,
-          profiles:user_id (full_name)
+          *
         `
         )
-        .eq("class_id", id)
+        .eq("class_id", classData.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;

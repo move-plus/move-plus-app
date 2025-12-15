@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea"; // Certifique-se de ter este componente
 import { useToast } from "@/hooks/use-toast";
 import {
   Table,
@@ -30,6 +30,7 @@ import {
   BarChart3,
   Calendar,
   MessageCircle,
+  User,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -74,8 +75,8 @@ const ClassManagement = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
-  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sendingMessage, setSendingMessage] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
     format(new Date(), "yyyy-MM-dd")
   );
@@ -85,7 +86,8 @@ const ClassManagement = () => {
     loadClassData();
     loadStudents();
     loadFrequencyData();
-  }, [id, frequencyData]);
+    loadMessages(); // Carregar mensagens ao iniciar
+  }, [id]);
 
   const loadClassData = async () => {
     const { data } = await supabase
@@ -115,12 +117,12 @@ const ClassManagement = () => {
       const studentIds = enrollments.map((e) => e.user_id);
 
       let studentsInfo = null;
-        const { data: studentsData, error: studentsError } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", studentIds);
+      const { data: studentsData, error: studentsError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", studentIds);
 
-        studentsInfo = studentsData;
+      studentsInfo = studentsData;
       if (studentsError) throw studentsError;
       
       const studentsWithAbsences = await Promise.all(
@@ -137,42 +139,78 @@ const ClassManagement = () => {
         })
       );
 
-      setStudents(studentsWithAbsences);
+      setStudents(studentsWithAbsences as any);
     } catch (error) {
       console.error("Error loading students:", error);
     }
   };
 
+  // --- LÓGICA DO FÓRUM: Carregar Mensagens ---
   const loadMessages = async () => {
-    const { data } = await supabase
+    // 1. Busca as mensagens da tabela forum_messages filtrando pelo class_id
+    const { data, error } = await supabase
       .from("forum_messages")
-      .select("*")
-      .eq("class_id", id)
+      .select(`
+        *
+      `)
+      .eq("class_id", classData.id)
       .order("created_at", { ascending: false });
 
+    if (error) {
+      console.error("Erro ao carregar mensagens:", error);
+      return;
+    }
+
     if (data) {
-      const messagesWithProfiles = await Promise.all(
-        data.map(async (msg) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", msg.user_id)
-            .maybeSingle();
+      setMessages(data as any);
+    }
+  };
 
-          return {
-            ...msg,
-            profiles: profile || null,
-          };
-        })
-      );
+  // --- LÓGICA DO FÓRUM: Enviar Mensagem ---
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
 
-      setMessages(messagesWithProfiles as Message[]);
+    setSendingMessage(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para enviar mensagens.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase.from("forum_messages").insert({
+        class_id: classData.id,
+        //user_id: user.id, // Importante para saber quem enviou
+        message: newMessage.trim(),
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Mensagem enviada",
+        description: "Sua mensagem foi postada no mural da turma.",
+      });
+
+      setNewMessage("");
+      loadMessages(); // Recarrega a lista
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingMessage(false);
     }
   };
 
   const loadFrequencyData = async () => {
     try {
-      // Buscar todos os registros de frequência
       const { data: frequencyRecords, error: freqError } = await supabase
         .from("frequency")
         .select(`
@@ -183,30 +221,19 @@ const ClassManagement = () => {
         `)
         .eq("class_id", id);
 
-      if (freqError) {
-        console.error("Error loading frequency data:", freqError);
-        return;
-      }
+      if (freqError) return;
 
-      // Buscar todos os alunos matriculados
       const { data: enrollments, error: enrollError } = await supabase
         .from("enrollments")
         .select("user_id")
         .eq("class_id", id);
 
-      if (enrollError) {
-        console.error("Error loading enrollments:", enrollError);
-        return;
-      }
+      if (enrollError) return;
 
-      // Buscar todas as datas únicas de aula (frequência registrada)
       const uniqueDates = new Set(frequencyRecords?.map(f => f.date) || []);
       const totalClasses = uniqueDates.size;
-
-      // Agrupar por aluno e calcular estatísticas
       const studentMap = new Map<string, FrequencyData>();
 
-      // Inicializar todos os alunos matriculados
       enrollments?.forEach(enrollment => {
         const userId = enrollment.user_id;
         if (!studentMap.has(userId)) {
@@ -223,7 +250,6 @@ const ClassManagement = () => {
         }
       });
 
-      // Processar presenças
       frequencyRecords?.forEach(record => {
         const userId = record.user_id;
         const existing = studentMap.get(userId);
@@ -242,7 +268,6 @@ const ClassManagement = () => {
         }
       });
 
-      // Calcular presenças por aluno
       const presenceCount = new Map<string, number>();
       frequencyRecords?.forEach(record => {
         presenceCount.set(
@@ -251,7 +276,6 @@ const ClassManagement = () => {
         );
       });
 
-      // Atualizar ausências e taxa de frequência
       studentMap.forEach((student, userId) => {
         const presences = presenceCount.get(userId) || 0;
         student.absences = totalClasses - presences;
@@ -268,7 +292,6 @@ const ClassManagement = () => {
   };
 
   const handleAttendanceSubmit = async () => {
-
     const attendanceRecords = Object.entries(attendance)
     .filter(([_, isPresent]) => isPresent === true)
     .map(([userId]) => ({
@@ -277,8 +300,6 @@ const ClassManagement = () => {
       class_id: classData.id,
     }))
 
-    console.log("Frequency:", attendance)
-    
     const { error } = await supabase
       .from("frequency")
       .upsert(attendanceRecords);
@@ -298,36 +319,9 @@ const ClassManagement = () => {
         )} atualizada.`,
       });
       loadStudents();
+      loadFrequencyData(); // Recarrega dados de frequência
     }
-
-    console.log("Attendance submitted:", attendanceRecords);
   };
-
-  // const handleSendMessage = async () => {
-  //   if (!newMessage.trim()) return;
-
-  //   const {
-  //     data: { user },
-  //   } = await supabase.auth.getUser();
-  //   if (!user) return;
-
-  //   const { error } = await supabase.from("forum_messages").insert({
-  //     class_id: id,
-  //     user_id: user.id,
-  //     message: newMessage,
-  //   });
-
-  //   if (error) {
-  //     toast({
-  //       title: "Erro ao enviar mensagem",
-  //       description: error.message,
-  //       variant: "destructive",
-  //     });
-  //   } else {
-  //     setNewMessage("");
-  //     loadMessages();
-  //   }
-  // };
 
   if (loading) {
     return (
@@ -515,45 +509,75 @@ const ClassManagement = () => {
             </div>
           </TabsContent>
 
-          {/* <TabsContent value="forum" className="space-y-6">
+          {/* --- NOVA ABA DE FÓRUM IMPLEMENTADA --- */}
+          <TabsContent value="forum" className="space-y-6">
             <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-[#1756AC] mb-4">Enviar Mensagem</h3>
+              <h3 className="text-lg font-semibold text-[#1756AC] mb-4">Mural da Turma</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Envie avisos e mensagens para toda a turma
+              </p>
+              
               <div className="space-y-4">
                 <Textarea
-                  placeholder="Digite sua mensagem..."
+                  placeholder="Escreva sua mensagem aqui..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  rows={3}
-                  className="resize-none"
+                  rows={4}
+                  className="resize-none bg-gray-50 border-gray-200"
                 />
-                <Button 
-                  onClick={handleSendMessage} 
-                  className="w-full bg-[#5F94E2] hover:bg-[#2D7DD2]"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Enviar
-                </Button>
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={handleSendMessage} 
+                    className="bg-[#5F94E2] hover:bg-[#2D7DD2] text-white"
+                    disabled={sendingMessage || !newMessage.trim()}
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    {sendingMessage ? "Enviando..." : "Enviar Mensagem"}
+                  </Button>
+                </div>
               </div>
             </div>
 
             <div className="space-y-4">
-              {messages.map((msg) => (
-                <div key={msg.id} className="bg-white rounded-xl shadow-sm border p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="font-semibold text-[#1756AC]">
-                      {msg.profiles?.full_name || "Usuário"}
-                    </p>
-                    <span className="text-xs text-gray-500">
-                      {format(new Date(msg.created_at), "dd/MM/yyyy HH:mm", {
-                        locale: ptBR,
-                      })}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700">{msg.message}</p>
+              <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                Histórico de Mensagens
+              </h4>
+              
+              {messages.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
+                  <MessageSquare className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">Nenhuma mensagem postada ainda.</p>
                 </div>
-              ))}
+              ) : (
+                messages.map((msg) => (
+                  <Card key={msg.id} className="overflow-hidden border-l-4 border-l-[#5F94E2] hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <User className="h-4 w-4 text-[#1756AC]" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-[#1756AC] text-sm">
+                              {"Professor"}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {format(new Date(msg.created_at), "dd 'de' MMMM 'às' HH:mm", {
+                                locale: ptBR,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 text-sm leading-relaxed pl-10">
+                        {msg.message}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
-          </TabsContent> */}
+          </TabsContent>
         </Tabs>
       </div>
     </div>
