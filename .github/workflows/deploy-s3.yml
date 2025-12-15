@@ -41,6 +41,8 @@ jobs:
           aws sts get-caller-identity
           echo "Testing S3 access..."
           aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/ || echo "⚠️ Warning: Cannot list bucket contents"
+          echo "Testing CloudFront access..."
+          aws cloudfront get-distribution --id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --query 'Distribution.Id' --output text || echo "⚠️ Warning: Cannot access CloudFront distribution"
 
       - name: Upload to S3 (sync)
         run: |
@@ -48,15 +50,15 @@ jobs:
             --delete \
             --exclude "index.html"
 
-      - name: Upload index.html separately
-        run: |
-          aws s3 cp ./frontend/dist/index.html s3://${{ secrets.S3_BUCKET_NAME }}/inde2.html
-
       - name: Create CloudFront invalidation
         run: |
-          aws cloudfront create-invalidation \
+          echo "Creating CloudFront invalidation..."
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-            --paths "/*"
+            --paths "/*" \
+            --query 'Invalidation.Id' --output text)
+          echo "✅ Invalidation created: $INVALIDATION_ID"
+        continue-on-error: true
 
       - name: Deployment summary
         run: |
