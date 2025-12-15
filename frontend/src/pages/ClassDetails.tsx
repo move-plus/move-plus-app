@@ -61,13 +61,13 @@ const ClassDetails = () => {
   useEffect(() => {
     if (!classData?.location_address) return;
 
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    const apiKey = 'AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU';
     const destination = encodeURIComponent(classData.location_address);
 
     console.log("KEY:", apiKey);
 
     if (!apiKey) {
-      setLocationStatus("Adicione a chave VITE_GOOGLE_MAPS_API_KEY no .env para ver o mapa.");
+      setLocationStatus("Não foi possível carregar a chave do Google Maps.");
       return;
     }
 
@@ -111,7 +111,7 @@ const ClassDetails = () => {
   useEffect(() => {
     const fetchDistance = async () => {
       if (!userLocation || !classData?.location_address) return;
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      const apiKey = 'AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU';
       if (!apiKey) return;
 
       try {

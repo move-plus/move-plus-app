@@ -1,35 +1,17 @@
-from functools import lru_cache
 from typing import List
 
-from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
+class Settings:
+    """Application configuration with hardcoded values."""
 
-class Settings(BaseSettings):
-    """Application configuration loaded from environment variables."""
-
-    supabase_url: str = Field(..., alias="SUPABASE_URL")
-    supabase_anon_key: str = Field(..., alias="SUPABASE_ANON_KEY")
-    supabase_service_key: str = Field(..., alias="SUPABASE_SERVICE_KEY")
+    supabase_url: str = "https://mxegxtsndzuxmxdittgg.supabase.co"
+    supabase_anon_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14ZWd4dHNuZHp1eG14ZGl0dGdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0MjM3MDQsImV4cCI6MjA4MDk5OTcwNH0.YVuFvCQD_10HvQtD5WBYiuZ4R4JzNXk3NvCVEp4ab6k"
+    supabase_service_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14ZWd4dHNuZHp1eG14ZGl0dGdnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTQyMzcwNCwiZXhwIjoyMDgwOTk5NzA0fQ.FtVC9etYvnAtrEdglOXSE7mU4upPuA05nNO3lhQAfYQ"
 
     api_prefix: str = "/api"
-    backend_port: int = Field(8000, alias="BACKEND_PORT")
-    allowed_origins: List[str] = Field(default_factory=lambda: ["*"])
-
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="allow")
-
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def split_origins(cls, value):
-        if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return value
+    backend_port: int = 8000
+    allowed_origins: List[str] = ["*"]
 
 
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
-
-
-settings = get_settings()
+settings = Settings()
 
