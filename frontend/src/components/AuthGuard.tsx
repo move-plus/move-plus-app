@@ -27,7 +27,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     "/criar-turma",
   ];
 
-  // 1. ADICIONE ISTO: Rotas que exigem login, mas não ligam se o role ainda não carregou
   const publicPrivateRoutes = [
     "/turma-aluno/:id"
   ];
@@ -44,7 +43,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     matchPath({ path: route, end: true }, location.pathname)
   );
   
-  // 2. VERIFICAÇÃO DA NOVA ROTA
   const isPublicPrivateRoute = publicPrivateRoutes.some(route =>
     matchPath({ path: route, end: true }, location.pathname)
   );
@@ -57,14 +55,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 3. LÓGICA DE LIBERAÇÃO: Se for a rota da turma, só exige User. Ignora o Role.
   if (isPublicPrivateRoute) {
     if (!user) {
        return <Navigate to="/login" state={{ from: location }} replace />;
     }
-    // Se tem user, libera IMEDIATAMENTE. 
-    // Não importa se o role é null, undefined ou 'student'. 
-    // Deixa a página da turma lidar com isso.
     return <>{children}</>;
   }
 
@@ -87,7 +81,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   else if (isGuestOnlyRoute) {
     if (user) {
-      // Cenário 1: Tudo carregado corretamente -> Redireciona
       if (role === "student") return <Navigate to="/minhas-turmas" replace />;
       if (role === "professional") return <Navigate to="/dashboard" replace />;
       
@@ -99,7 +92,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // A "Trava de Segurança" continua aqui para outras rotas desconhecidas
   if (user && !role && !isProtectedRoute) {
     console.log('User trying acessing: ', location.pathname);
     console.log('Redirecting to onboarding because user has no role.');
