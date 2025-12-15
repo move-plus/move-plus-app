@@ -206,13 +206,13 @@ export default function Profile() {
     navigate("/");
   };
 
-  const handleAvatarUpload = async (
+ const handleAvatarUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
+    // 1. Validações (Tipo e Tamanho)
     if (!file.type.startsWith("image/")) {
       toast({
         title: "Erro",
@@ -222,7 +222,6 @@ export default function Profile() {
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Erro",
@@ -233,63 +232,82 @@ export default function Profile() {
     }
 
     setUploading(true);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) return;
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Usuário não autenticado");
 
-    const oldAvatarUrl = profileData?.avatar_url;
-    if (oldAvatarUrl) {
-      const oldPath = oldAvatarUrl.split("/").slice(-2).join("/");
-      await supabase.storage.from("avatars").remove([oldPath]);
-    }
+      // 2. Prepara o nome do arquivo
+      // Adicionamos um timestamp para evitar cache do navegador ao trocar a foto
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(fileName, file);
+      // 3. Remove a foto antiga do Storage (Opcional, mas boa prática para economizar espaço)
+      const oldAvatarUrl = profileData?.avatar_url;
+      if (oldAvatarUrl) {
+        // Tenta extrair o path do arquivo antigo da URL
+        const oldPath = oldAvatarUrl.split("/avatars/")[1]; 
+        if (oldPath) {
+             await supabase.storage.from("avatars").remove([oldPath]);
+        }
+      }
 
-    if (uploadError) {
+      // 4. Faz o Upload para o Bucket 'avatars'
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // 5. Gera a URL Pública
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(fileName);
+
+      // 6. Atualiza a tabela 'profiles' (Centralizada)
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", session.user.id);
+
+      if (updateError) throw updateError;
+
+      // 7. ATUALIZA O ESTADO LOCAL (Para a imagem mudar na hora na tela)
+      setProfileData((prev) => ({
+        ...prev,
+        avatar_url: publicUrl,
+        // Mantém os outros campos obrigatórios do tipo ProfileData
+        role: prev.role,
+        full_name: prev.full_name,
+        bio: prev.bio,
+        email: prev.email,
+        phone: prev.phone,
+        address: prev.address,
+        cpf: prev.cpf,
+        gender: prev.gender,
+        birth_date: prev.birth_date
+      }));
+
       toast({
-        title: "Erro ao fazer upload",
-        description: uploadError.message,
+        title: "Foto atualizada",
+        description: "Sua foto de perfil foi atualizada com sucesso.",
+      });
+
+    } catch (error: any) {
+      console.error("Erro no upload:", error);
+      toast({
+        title: "Erro ao atualizar foto",
+        description: error.message || "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
+    } finally {
       setUploading(false);
-      return;
+      // Limpa o input para permitir selecionar a mesma foto novamente se necessário
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
-
-    // Get public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("avatars").getPublicUrl(fileName);
-
-    // Update database
-    const table = profileData?.role === "student" ? "students" : "professionals";
-    const { error: updateError } = await supabase
-      .from(table)
-      .update({ avatar_url: publicUrl })
-      .eq("id", session.user.id);
-
-    setUploading(false);
-
-    if (updateError) {
-      toast({
-        title: "Erro ao atualizar",
-        description: updateError.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Foto atualizada",
-      description: "Sua foto de perfil foi atualizada com sucesso.",
-    });
   };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-12">

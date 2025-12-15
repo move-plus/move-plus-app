@@ -18,6 +18,8 @@ import {
   Clock,
   TrendingUp,
   BookOpen,
+  Calendar,
+  Wallet,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
@@ -87,7 +89,6 @@ const Dashboard = () => {
 
     setClasses(classesData || []);
     setDemands(demandsData || []);
-    console.log(demandsData)
 
     setDemandsCount(demandsData.length);
     setLoading(false);
@@ -109,6 +110,20 @@ const Dashboard = () => {
       },
     });
   };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
+  // Calcula receita total: (Preço da Turma * Num Alunos) somado para todas as turmas
+  const totalRevenue = classes.reduce((total, cls) => {
+    const count = cls.enrollments?.[0]?.count || 0;
+    const price = cls.price || 0;
+    return total + (count * price);
+  }, 0);
 
   if (loading) {
     return (
@@ -141,7 +156,7 @@ const Dashboard = () => {
             </div>
             <div>
               <div className="text-3xl font-bold text-white">
-                R$ 0.00
+                {formatCurrency(totalRevenue)}
               </div>
               <p className="text-xs text-white/80 mt-1">
                 Acumulado de todas as turmas
@@ -298,7 +313,7 @@ const Dashboard = () => {
                         </div>
                          {/* Se tiver data de criação */}
                         <div className="flex items-center space-x-2">
-                          {/* <Calendar className="h-4 w-4 text-gray-600 shrink-0" /> */}
+                          <Calendar className="h-4 w-4 text-gray-600 shrink-0" />
                           <span className="text-sm text-gray-600">
                             Postado em {new Date(demand.created_at).toLocaleDateString('pt-BR')}
                           </span>
@@ -314,6 +329,53 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="financial" className="space-y-4">
+            {classes.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm border p-8 text-center">
+                <p className="text-gray-600">Cadastre turmas para visualizar seus rendimentos.</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-6">
+                {classes.map((cls) => {
+                  const studentCount = cls.enrollments?.[0]?.count || 0;
+                  const monthlyPrice = cls.price || 0;
+                  const classRevenue = studentCount * monthlyPrice;
+
+                  return (
+                    <div key={cls.id} className="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <Wallet className="h-6 w-6 text-[#1756AC]" />
+                        </div>
+                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                          Ativo
+                        </span>
+                      </div>
+                      
+                      <h3 className="text-lg font-bold text-[#1756AC] mb-1">{cls.title}</h3>
+                      <p className="text-sm text-gray-500 mb-4">
+                        Valor Mensal: {formatCurrency(monthlyPrice)}
+                      </p>
+                      
+                      <div className="border-t pt-4 mt-2 grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase font-semibold">Alunos</p>
+                          <p className="text-lg font-medium text-gray-700">{studentCount}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500 uppercase font-semibold">Rendimento</p>
+                          <p className="text-xl font-bold text-[#25C588]">
+                            {formatCurrency(classRevenue)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </TabsContent>

@@ -94,6 +94,14 @@ export function Routes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <PrivateChat />
+            </ProtectedRoute>
+          }
+        />
         
         <Route path="*" element={<NotFound />} />
       </RoutesDOM>
