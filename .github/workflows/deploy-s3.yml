@@ -40,15 +40,25 @@ jobs:
           echo "Testing AWS credentials..."
           aws sts get-caller-identity
           echo "Testing S3 access..."
-          aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/ || echo "⚠️ Warning: Cannot list bucket contents"
+          aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/dist/ || echo "⚠️ Warning: Cannot list bucket contents"
           echo "Testing CloudFront access..."
           aws cloudfront get-distribution --id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --query 'Distribution.Id' --output text || echo "⚠️ Warning: Cannot access CloudFront distribution"
 
       - name: Upload to S3 (sync)
         run: |
-          aws s3 sync ./frontend/dist s3://${{ secrets.S3_BUCKET_NAME }} \
+          echo "Uploading files to S3 (dist folder)..."
+          aws s3 sync ./frontend/dist s3://${{ secrets.S3_BUCKET_NAME }}/dist \
             --delete \
-            --exclude "index.html"
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "*.html" \
+            --exclude "*.json"
+          
+          echo "Uploading HTML files..."
+          aws s3 cp ./frontend/dist/index.html s3://${{ secrets.S3_BUCKET_NAME }}/dist/index.html \
+            --content-type "text/html" \
+            --cache-control "public, max-age=0, must-revalidate"
+          
+          echo "✅ All files uploaded successfully to s3://${{ secrets.S3_BUCKET_NAME }}/dist/"
 
       - name: Create CloudFront invalidation
         run: |
@@ -57,13 +67,30 @@ jobs:
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*" \
             --query 'Invalidation.Id' --output text)
-          echo "✅ Invalidation created: $INVALIDATION_ID" 
-        continue-on-error: true
+          
+          if [ -z "$INVALIDATION_ID" ]; then
+            echo "❌ Error: Failed to create invalidation"
+            exit 1
+          fi
+          
+          echo "✅ Invalidation created successfully!"
+          echo "   ID: $INVALIDATION_ID"
+          echo "   Paths: /*"
+          echo ""
+          echo "⏳ Invalidation is processing. This may take 1-5 minutes to complete."
+          echo "   Your site will update automatically once the invalidation finishes."
+          echo "   Check status: https://console.aws.amazon.com/cloudfront/v3/home#/distributions/${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}/invalidations"
 
       - name: Deployment summary
         run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "✅ Deployment completed successfully!"
-          echo "📦 Files uploaded to S3 bucket: ${{ secrets.S3_BUCKET_NAME }}"
-          echo "🔄 CloudFront invalidation created for distribution: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}"
-          echo "📄 index.html renamed to index2.html"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📦 S3 Bucket: ${{ secrets.S3_BUCKET_NAME }}/dist/"
+          echo "🌐 CloudFront Distribution: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}"
+          echo "📄 Files deployed with proper cache headers"
+          echo ""
+          echo "💡 Note: CloudFront invalidation may take 1-5 minutes to complete."
+          echo "   Your site will update automatically once the invalidation finishes."
 
