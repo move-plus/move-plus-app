@@ -153,7 +153,7 @@ const ClassManagement = () => {
       .select(`
         *
       `)
-      .eq("class_id", classData.id)
+      .eq("class_id", id)
       .order("created_at", { ascending: false });
 
     if (error) {
