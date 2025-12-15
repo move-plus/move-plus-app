@@ -50,7 +50,6 @@ const CreateClass = () => {
     }));
 
     const apiKey = "AIzaSyBEKe9FuiZDmFD1XSoTHzh4P5esSgrYDHk"; 
-    // Garanta que a chave está aqui ou use import.meta.env.VITE_GOOGLE_KEY
     if (apiKey && apiKey !== "AIzaSyBEKe9FuiZDmFD1XSoTHzh4P5esSgrYDHk") {
        const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x300&markers=color:red|${lat},${lng}&key=${apiKey}`;
        setMapUrl(url);

@@ -55,13 +55,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // if (isPublicPrivateRoute) {
-  //   if (!user) {
-  //      return <Navigate to="/login" state={{ from: location }} replace />;
-  //   }
-  //   return <>{children}</>;
-  // }
-
   if (isPrivateRoute) {
     if (!user) {
       return <Navigate to="/login" state={{ from: location }} replace />;
