@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation} from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user, fetchRole } = useAuth();
   
@@ -30,10 +31,12 @@ export default function Onboarding() {
       toast({ title: "Cadastro completo!" });
       
     await fetchRole(user.id);
-    navigate("/buscar-turmas");
+    navigate(location.state?.from?.pathname || "/minhas-turmas", { replace: true });
 
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      // qualquer limpeza se necessário
     }
   };
 

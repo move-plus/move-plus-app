@@ -1,11 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  'https://mxegxtsndzuxmxdittgg.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14ZWd4dHNuZHp1eG14ZGl0dGdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0MjM3MDQsImV4cCI6MjA4MDk5OTcwNH0.YVuFvCQD_10HvQtD5WBYiuZ4R4JzNXk3NvCVEp4ab6k'
 );
 
 export const authenticate = async (req, res, next) => {

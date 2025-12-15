@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,14 @@ export default function LoginPhone() {
   const { loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [step, setStep] = useState<"PHONE" | "OTP">("PHONE");
-  const [tLoading, setTLoading] = useState(false); // Loading local da transação
+  const [tLoading, setTLoading] = useState(false);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
+
+  const from = location.state?.from?.pathname || "/onboarding";
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,8 +63,9 @@ export default function LoginPhone() {
 
       if (error) throw error;
       
+
       toast({ title: "Bem-vindo ao Move+!" });
-      navigate("/onboarding");
+      navigate(from, { replace: true });
 
     } catch (error: any) {
       toast({ title: "Código inválido", variant: "destructive" });

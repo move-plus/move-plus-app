@@ -13,7 +13,7 @@ export default function LoginEmail() {
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [tLoading, setTLoading] = useState(false); // Loading local do botão
+  const [tLoading, setTLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

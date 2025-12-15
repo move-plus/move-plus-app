@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 
 import meRoutes from './src/routes/me.js';
 import demandsRoutes from './src/routes/demands.js';
@@ -9,18 +8,13 @@ import enrollmentsRoutes from './src/routes/enrollments.js';
 import forumRoutes from './src/routes/forum.js';
 import messagesRoutes from './src/routes/messages.js';
 
-dotenv.config();
-
 const app = express();
 
 // CORS configurado para produção e desenvolvimento
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://seu-app.vercel.app', 'https://fitsenior.vercel.app'] // adicione sua URL da Vercel aqui
-    : '*',
+  origin: '*',
   credentials: true,
 };
-print(process.env.NODE_ENV);
 
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -48,7 +42,7 @@ app.use('/api', enrollmentsRoutes);
 app.use('/api', forumRoutes);
 app.use('/api', messagesRoutes);
 
-const port = process.env.PORT || 3000;
+const port = 8000;
 app.listen(port, () => {
   console.log(`Backend rodando na porta ${port}`);
 });

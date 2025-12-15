@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ const ClassDetails = () => {
   const [locationStatus, setLocationStatus] = useState(
     "Ative a localizacao para estimar a distancia ate a aula."
   );
+  const location = useLocation();
 
   useEffect(() => {
     fetchClassDetails();
@@ -60,13 +61,13 @@ const ClassDetails = () => {
   }, [isEnrolled]);
 
   useEffect(() => {
-    if (!classData?.location) return;
+    if (!classData?.location_address) return;
 
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    const destination = encodeURIComponent(classData.location);
+    const apiKey = 'AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU';
+    const destination = encodeURIComponent(classData.location_address);
 
     if (!apiKey) {
-      setLocationStatus("Adicione a chave VITE_GOOGLE_MAPS_API_KEY no .env para ver o mapa.");
+      setLocationStatus("Não foi possível carregar a chave do Google Maps.");
       return;
     }
 
@@ -105,13 +106,12 @@ const ClassDetails = () => {
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, [classData?.location]);
+  }, [classData?.location_address]);
 
   useEffect(() => {
     const fetchDistance = async () => {
-      if (!userLocation || !classData?.location) return;
-
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!userLocation || !classData?.location_address) return;
+      const apiKey = 'AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU';
       if (!apiKey) return;
 
       try {
@@ -138,7 +138,7 @@ const ClassDetails = () => {
     };
 
     fetchDistance();
-  }, [userLocation, classData?.location]);
+  }, [userLocation, classData?.location_address]);
 
   const fetchClassDetails = async () => {
     try {
@@ -310,7 +310,10 @@ const ClassDetails = () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
+      if (!user) {
+        navigate("/login", { state: { from: location } });
+        return;
+      }
 
       const { error } = await supabase.from("enrollments").insert({
         class_id: id,

@@ -6,14 +6,15 @@ import HowItWorks from "@/components/HowItWorks";
 import ClassShowcase from "@/components/ClassShowcase";
 import ForProfessionals from "@/components/ForProfessionals";
 import CTA from "@/components/CTA";
+import { Home } from "./Home";
 
 const Index = () => {
   return (
     <main className="min-h-screen pb-24">
+      <Home />
       <Hero />
       <Features />
       <HowItWorks />
-      <ClassShowcase />
       <ForProfessionals />
       <CTA />
     </main>
