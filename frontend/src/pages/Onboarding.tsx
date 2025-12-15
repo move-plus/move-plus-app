@@ -11,9 +11,13 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { user, fetchRole } = useAuth();
+  const { user, role, fetchRole } = useAuth();
   
   const [name, setName] = useState("");
+
+  if (role) {
+    navigate("/minhas-turmas", { replace: true });
+  }
 
   const handleFinish = async () => {
     try {

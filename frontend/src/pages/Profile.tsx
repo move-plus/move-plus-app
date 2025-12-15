@@ -308,6 +308,59 @@ export default function Profile() {
       }
     }
   };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+    
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${authUser?.id}/${fileName}`;
+
+    try {
+      setLoading(true);
+
+      const { error: uploadError } = await supabase.storage
+        .from('health_certificates')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: signedUrlData } = await supabase.storage
+        .from('health_certificates')
+        .createSignedUrl(filePath, 3600);
+
+      if (!signedUrlData?.signedUrl) throw new Error("Erro ao gerar link seguro");
+
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({ 
+            health_certificate_url: signedUrlData.signedUrl 
+        })
+        .eq('id', authUser?.id);
+
+      if (updateError) throw updateError;
+
+      toast({ title: "Sucesso!", description: "Certificado enviado." });
+      
+      setStudentData((prev: any) => ({
+        ...prev,
+        health_certificate_url: signedUrlData.signedUrl
+      }));
+
+    } catch (error: any) {
+      toast({ 
+          title: "Erro no upload", 
+          description: error.message, 
+          variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-12">
@@ -626,6 +679,16 @@ export default function Profile() {
                           Nenhum certificado anexado.
                         </p>
                       )}
+                      <Input
+                        id="health_certificate"
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png" // Restringe tipos de arquivo
+                        onChange={handleFileUpload}   // <--- Função que envia pro Supabase
+                        className="cursor-pointer"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Formatos aceitos: PDF, JPG, PNG (Max 5MB)
+                      </p>
                     </div>
                   </div>
                 )}
