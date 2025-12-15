@@ -123,7 +123,7 @@ export const AddressAutocomplete = React.memo(function AddressAutocomplete({ onA
           padding-left: 14px;
           padding-right: 14px;
           font-size: 16px;
-          color: #020617;
+          color: #ffffffff;
           box-sizing: border-box;
           transition: border-color 0.2s;
         }

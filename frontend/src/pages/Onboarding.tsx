@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation} from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth";
@@ -11,10 +11,9 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { user, fetchRole } = useAuth();
+  const { user, role, fetchRole } = useAuth();
   
   const [name, setName] = useState("");
-
   const handleFinish = async () => {
     try {
       const { error } = await supabase
@@ -35,8 +34,6 @@ export default function Onboarding() {
 
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
-    } finally {
-      // qualquer limpeza se necessário
     }
   };
 

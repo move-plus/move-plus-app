@@ -19,7 +19,8 @@ export default function LoginPhone() {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
 
-  const from = location.state?.from?.pathname || "/onboarding";
+  let from = location.state?.from?.pathname || "/onboarding";
+  from.pathname == undefined ? from = "/" : from = from;
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +66,10 @@ export default function LoginPhone() {
       
 
       toast({ title: "Bem-vindo ao Move+!" });
+
+      let from = location.state?.from?.pathname || "/onboarding";
+      location.state?.from?.pathname == undefined ? from = "/" : from = from;
+
       navigate(from, { replace: true });
 
     } catch (error: any) {

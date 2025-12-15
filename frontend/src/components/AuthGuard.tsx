@@ -55,12 +55,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isPublicPrivateRoute) {
-    if (!user) {
-       return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-    return <>{children}</>;
-  }
+  // if (isPublicPrivateRoute) {
+  //   if (!user) {
+  //      return <Navigate to="/login" state={{ from: location }} replace />;
+  //   }
+  //   return <>{children}</>;
+  // }
 
   if (isPrivateRoute) {
     if (!user) {
@@ -72,7 +72,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     if (user) {
       if (role === "student") return <Navigate to="/minhas-turmas" replace />;
       if (role === "professional") return <Navigate to="/dashboard" replace />;
-      
       return (
         <div className="flex h-screen w-full items-center justify-center bg-[#F5F7FA]">
           <Loader2 className="h-10 w-10 animate-spin text-[#2D7DD2]" />
