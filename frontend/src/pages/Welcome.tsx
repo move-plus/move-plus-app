@@ -145,7 +145,7 @@ const Welcome = () => {
 
       {/* botões */}
       <div className="w-full max-w-sm sm:max-w-md md:max-w-lg space-y-3 sm:space-y-4 animate-slide-up pb-4 sm:pb-8">
-        <Link to="/signup" className="block">
+        <Link to="/login" className="block">
           <Button 
             className="w-full h-14 sm:h-16 md:h-[4.5rem] text-base sm:text-lg md:text-xl bg-[#25C588] hover:bg-[#1ea871] text-white font-semibold rounded-full shadow-2xl transition-all"
             size="lg"

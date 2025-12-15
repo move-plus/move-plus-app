@@ -14,6 +14,7 @@ const AppContent = () => {
     "/login",
     "/login-profissional",
     "/signup",
+    "/onboarding",
     "/cadastro-idoso",
     "/cadastro-profissional"
   ].includes(location.pathname);

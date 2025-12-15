@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Phone, ArrowRight, Loader2 } from "lucide-react";
+import { Phone, ArrowRight, Loader2, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -72,8 +72,15 @@ export default function LoginPhone() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F5F7FA] px-4">
-      <div className="w-full max-w-md bg-white p-8 shadow-xl rounded-3xl border border-gray-100">
+      <div className="w-full max-w-md bg-white p-8 shadow-xl rounded-3xl border border-gray-100 relative">
         
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-6 left-6 text-gray-600 hover:text-[#5F94E2] transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[#2D7DD2] mb-2">Move+</h1>
           <p className="text-gray-500">
