@@ -38,11 +38,10 @@ const CreateClass = () => {
   } | null;
 
   const [formData, setFormData] = useState({
-    title: demandData?.activity || "",
-    description: "",
+    title: demandData?.activity || "", // Preenche Título
     category: "",
-    schedule: "",  
-    location_address: demandData?.location || "",
+    schedule: demandData?.schedule || "", // <--- CORREÇÃO: Preenche Horário
+    location_address: demandData?.location || "", // Preenche Endereço
     capacity: "",
     price: "",
     level: "",
@@ -95,7 +94,7 @@ const CreateClass = () => {
       const { error } = await supabase.from("classes").insert({
         professional_id: professionalId,
         title: formData.title,
-        description: formData.description,
+        //description: formData.description,
         category: formData.category,
         schedule: formData.schedule,
         capacity: parseInt(formData.capacity) || 10,
@@ -105,6 +104,18 @@ const CreateClass = () => {
       });
 
       if (error) throw error;
+
+      if (demandData?.demandId) {
+        const { error: updateError } = await supabase
+          .from("Demandas" as any) // "as any" para evitar erro de tipagem se a tabela for nova
+          .update({ atendida: true })
+          .eq("id", demandData.demandId);
+
+      if (updateError) {
+          console.error("Erro ao atualizar status da demanda:", updateError);
+          // Opcional: Avisar o usuário que a demanda não foi fechada, 
+          // mas geralmente deixamos passar pois a turma foi criada com sucesso.
+        }}
 
       toast({
         title: "Turma Cadastrada!",

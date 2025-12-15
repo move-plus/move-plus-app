@@ -110,33 +110,30 @@ export type Database = {
           }
         ];
       };
-      demands: {
+      Demandas: {
         Row: {
-          activity: string;
+          tipo: string;
           created_at: string | null;
           id: string;
-          location: string;
-          neighborhood: string;
-          num_interested: number;
-          schedule: string;
+          localizacao: string;
+          atendida: boolean;
+          horario: string;
         };
         Insert: {
-          activity: string;
-          created_at?: string | null;
-          id?: string;
-          location: string;
-          neighborhood: string;
-          num_interested?: number;
-          schedule: string;
+          tipo: string;
+          created_at: string | null;
+          id: string;
+          localizacao: string;
+          atendida: boolean;
+          horario: string;
         };
         Update: {
-          activity?: string;
-          created_at?: string | null;
-          id?: string;
-          location?: string;
-          neighborhood?: string;
-          num_interested?: number;
-          schedule?: string;
+          tipo: string;
+          created_at: string | null;
+          id: string;
+          localizacao: string;
+          atendida: boolean;
+          horario: string;
         };
         Relationships: [];
       };

@@ -22,12 +22,23 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 
+interface Demand {
+  id: string;
+  tipo: string; // ou 'activity' dependendo do seu banco
+  activity: string;
+  localizacao: string;
+  horario: string;
+  created_at: string;
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [professional, setProfessional] = useState<any>(null);
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [demands, setDemands] = useState<any[]>([]);
+  const [demandsCount, setDemandsCount] = useState(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -68,7 +79,17 @@ const Dashboard = () => {
       .eq("professional_id", professionalId)
       .order('created_at', { ascending: false });
 
+    const { data: demandsData } = await supabase
+      .from("Demandas") 
+      .select("*")
+      .eq('atendida', false) // Opcional: descomente se quiser apenas demandas abertas
+      .order('created_at', { ascending: false });
+
     setClasses(classesData || []);
+    setDemands(demandsData || []);
+    console.log(demandsData)
+
+    setDemandsCount(demandsData.length);
     setLoading(false);
   };
 
@@ -78,12 +99,13 @@ const Dashboard = () => {
   };
 
   const createClassFromDemand = (demand: Demand) => {
-    navigate("/cadastrar-aulas", {
+    navigate("/criar-turma", {
       state: {
         demandId: demand.id,
-        activity: demand.activity,
-        schedule: demand.schedule,
-        location: demand.location,
+        // Mapeando os campos do banco (Português) para o Form (Inglês)
+        activity: demand.tipo, 
+        schedule: demand.horario, 
+        location: demand.localizacao,
       },
     });
   };
@@ -150,7 +172,7 @@ const Dashboard = () => {
               <TrendingUp className="h-5 w-5 text-white" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-white">{0}</div>
+              <div className="text-3xl font-bold text-white">{demandsCount}</div>
               <p className="text-xs text-white/80 mt-1">
                 Oportunidades disponíveis
               </p>
@@ -227,6 +249,69 @@ const Dashboard = () => {
                         <span className="text-sm text-gray-600">{classItem.schedule}</span>
                       </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="demands" className="space-y-4">
+            {demands.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm border p-8 text-center">
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  <div className="rounded-full bg-green-100 p-6">
+                    <TrendingUp className="h-12 w-12 text-[#25C588]" />
+                  </div>
+                  <p className="text-gray-600">
+                    Nenhuma demanda disponível no momento.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {demands.map((demand) => (
+                  <div 
+                    key={demand.id} 
+                    className="bg-white rounded-xl shadow-sm border p-5 flex flex-col justify-between hover:shadow-md transition-shadow h-full"
+                  >
+                    <div className="space-y-3 mb-4">
+                      <div>
+                        {/* Assumindo que a demanda tem um 'title' ou 'activity' como título */}
+                        <h3 className="text-lg font-semibold text-[#1756AC]">
+                          {demand.tipo || "Nova Demanda"}
+                        </h3>
+                        {demand.description && (
+                            <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                                {demand.description}
+                            </p>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <MapPin className="h-4 w-4 text-gray-600 shrink-0" />
+                          <span className="text-sm text-gray-600 truncate">{demand.localizacao || "Local a definir"}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-gray-600 shrink-0" />
+                          <span className="text-sm text-gray-600">{demand.horario || "Horário a combinar"}</span>
+                        </div>
+                         {/* Se tiver data de criação */}
+                        <div className="flex items-center space-x-2">
+                          {/* <Calendar className="h-4 w-4 text-gray-600 shrink-0" /> */}
+                          <span className="text-sm text-gray-600">
+                            Postado em {new Date(demand.created_at).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={() => createClassFromDemand(demand)}
+                      className="w-full bg-[#25C588] hover:bg-[#1ea872] text-white transition-colors"
+                    >
+                      Criar Turma para esta Demanda
+                    </Button>
                   </div>
                 ))}
               </div>
