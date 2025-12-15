@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +44,7 @@ const ClassDetails = () => {
   const [locationStatus, setLocationStatus] = useState(
     "Ative a localizacao para estimar a distancia ate a aula."
   );
+  const location = useLocation();
 
   useEffect(() => {
     fetchClassDetails();
@@ -63,8 +64,6 @@ const ClassDetails = () => {
 
     const apiKey = 'AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU';
     const destination = encodeURIComponent(classData.location_address);
-
-    console.log("KEY:", apiKey);
 
     if (!apiKey) {
       setLocationStatus("Não foi possível carregar a chave do Google Maps.");
@@ -311,7 +310,7 @@ const ClassDetails = () => {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        navigate("/login");
+        navigate("/login", { state: { from: location } });
         return;
       }
 

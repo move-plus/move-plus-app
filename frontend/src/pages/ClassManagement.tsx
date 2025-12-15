@@ -349,9 +349,9 @@ const ClassManagement = () => {
         </Button>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-bold">{classData?.activity}</h1>
+          <h1 className="text-4xl font-bold">{classData?.title}</h1>
           <p className="text-xl text-muted-foreground mt-2">
-            {classData?.schedule} • {classData?.location}
+            {classData?.schedule} • {classData?.location_address}
           </p>
         </div>
 
