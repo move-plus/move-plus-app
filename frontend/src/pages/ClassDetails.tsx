@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,30 +21,50 @@ import {
   MessageCircle,
 } from "lucide-react";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CheckCircle2, QrCode, Copy } from "lucide-react";
+
+const GOOGLE_API_KEY = "AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU";
+
 const ClassDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const location = useLocation();
+
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
+  
   const [classData, setClassData] = useState<any>(null);
   const [professional, setProfessional] = useState<any>(null);
+  
   const [enrollmentCount, setEnrollmentCount] = useState(0);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  
   const [forumMessages, setForumMessages] = useState<any[]>([]);
   const [classmates, setClassmates] = useState<any[]>([]);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(
-    null
-  );
+  
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
+  
   const [distanceInfo, setDistanceInfo] = useState<{
     distanceText: string;
     durationText: string;
   } | null>(null);
+  
   const [locationStatus, setLocationStatus] = useState(
-    "Ative a localizacao para estimar a distancia ate a aula."
+    "Ative a localização para ver a distância."
   );
-  const location = useLocation();
+
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<"pending" | "success">("pending");
+  const [enrollmentData, setEnrollmentData] = useState<any>(null);
 
   useEffect(() => {
     fetchClassDetails();
@@ -61,84 +80,86 @@ const ClassDetails = () => {
   }, [isEnrolled]);
 
   useEffect(() => {
-    if (!classData?.location_address) return;
+    if (!classData) return;
 
-    const apiKey = 'AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU';
-    const destination = encodeURIComponent(classData.location_address);
+    const destinationQuery = (classData.lat && classData.lng)
+      ? `${classData.lat},${classData.lng}`
+      : encodeURIComponent(classData.location_address);
 
-    if (!apiKey) {
-      setLocationStatus("Não foi possível carregar a chave do Google Maps.");
-      return;
-    }
-
-    setDistanceInfo(null);
-    setUserLocation(null);
-    setLocationStatus("Solicitando sua localizacao para tracar a rota...");
-
-    // Mostra somente o destino enquanto ainda nao temos origem
-    setMapUrl(`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${destination}`);
+    // URL Oficial do Google Static Maps
+    const initialMap = `https://maps.googleapis.com/maps/api/staticmap?center=${destinationQuery}&zoom=15&size=600x300&markers=color:red|${destinationQuery}&key=${GOOGLE_API_KEY}`;
+    setMapUrl(initialMap);
 
     if (!navigator.geolocation) {
-      setLocationStatus("Seu navegador nao permite localizacao automatica.");
+      setLocationStatus("Seu navegador não suporta geolocalização.");
       return;
     }
 
-    setLocationStatus("Solicitando sua localizacao...");
+    setLocationStatus("Solicitando sua localização...");
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const coords = {
+        const userCoords = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         };
-        setUserLocation(coords);
-        setLocationStatus("Calculando distancia...");
+        setUserLocation(userCoords);
+        setLocationStatus("Calculando rota...");
 
-        setMapUrl(
-          `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${coords.lat},${coords.lng}&destination=${destination}&mode=walking`
-        );
+        // Atualiza o mapa para mostrar DOIS pontos (Origem do usuário e Destino da aula)
+        // &markers=color:blue|label:VC|... (Você)
+        // &markers=color:red|... (Aula)
+        const routeMap = `https://maps.googleapis.com/maps/api/staticmap?size=600x300&markers=color:blue|label:U|${userCoords.lat},${userCoords.lng}&markers=color:red|${destinationQuery}&path=color:0x0000ff|weight:5|${userCoords.lat},${userCoords.lng}|${destinationQuery}&key=${GOOGLE_API_KEY}`;
+        
+        setMapUrl(routeMap);
       },
-      () => {
-        setLocationStatus(
-          "Nao foi possivel obter sua localizacao. Mostrando apenas o local da aula."
-        );
-        // Mantem o mapa apenas com o destino
-        setMapUrl(`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${destination}`);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+      (error) => {
+        console.error("Erro de geolocalização:", error);
+        setLocationStatus("Não foi possível obter sua localização.");
+      }
     );
-  }, [classData?.location_address]);
+  }, [classData]);
 
   useEffect(() => {
-    const fetchDistance = async () => {
-      if (!userLocation || !classData?.location_address) return;
-      const apiKey = 'AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU';
-      if (!apiKey) return;
+    if (!userLocation || !classData) return;
+    if (!window.google || !window.google.maps) return;
 
-      try {
-        const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${userLocation.lat},${userLocation.lng}&destinations=${encodeURIComponent(
-          classData.location
-        )}&mode=walking&key=${apiKey}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        const element = data?.rows?.[0]?.elements?.[0];
+    const calculateDistanceNative = () => {
+      const service = new google.maps.DistanceMatrixService();
 
-        if (element?.status === "OK") {
-          setDistanceInfo({
-            distanceText: element.distance?.text || "",
-            durationText: element.duration?.text || "",
-          });
-          setLocationStatus("");
-        } else {
-          setLocationStatus("Não foi possível calcular a distância agora.");
+      const destination = (classData.lat && classData.lng)
+        ? { lat: classData.lat, lng: classData.lng }
+        : classData.location_address;
+
+      service.getDistanceMatrix(
+        {
+          origins: [{ lat: userLocation.lat, lng: userLocation.lng }],
+          destinations: [destination],
+          travelMode: google.maps.TravelMode.DRIVING,
+          unitSystem: google.maps.UnitSystem.METRIC,
+        },
+        (response, status) => {
+          if (status === "OK" && response) {
+            const element = response.rows[0].elements[0];
+            if (element.status === "OK") {
+              setDistanceInfo({
+                distanceText: element.distance.text,
+                durationText: element.duration.text,
+              });
+              setLocationStatus("");
+            } else {
+              setLocationStatus("Rota não encontrada (muito longe ou oceano).");
+            }
+          } else {
+            console.error("Erro DistanceMatrix:", status);
+            setLocationStatus("Erro ao calcular distância.");
+          }
         }
-      } catch (error) {
-        console.error("Erro ao calcular distância:", error);
-        setLocationStatus("Não foi possível calcular a distância agora.");
-      }
+      );
     };
 
-    fetchDistance();
-  }, [userLocation, classData?.location_address]);
+    calculateDistanceNative();
+  }, [userLocation, classData]);
 
   const fetchClassDetails = async () => {
     try {
@@ -185,7 +206,7 @@ const ClassDetails = () => {
       const { data: enrollments, error: enrollError } = await supabase
         .from("enrollments")
         .select("id, user_id")
-        .eq("class_id", id)
+        .eq("class_id", id);
 
       if (enrollError) throw enrollError;
 
@@ -203,11 +224,8 @@ const ClassDetails = () => {
 
       if (studentsError) throw studentsError;
 
-      const classmates = enrollments.map((enrollment) => {
-        const student = students?.find(
-          (s) => s.id === enrollment.user_id
-        );
-
+      const classmatesData = enrollments.map((enrollment) => {
+        const student = students?.find((s) => s.id === enrollment.user_id);
         return {
           enrollment_id: enrollment.id,
           student_id: enrollment.user_id,
@@ -215,20 +233,19 @@ const ClassDetails = () => {
           email: student?.email,
           phone: student?.phone,
           gender: student?.gender,
-          avatar_url: "" // student?.avatar_url,
+          avatar_url: "",
         };
       });
 
-      setClassmates(classmates);
+      setClassmates(classmatesData);
     } catch (error: any) {
       console.error("Error fetching classmates:", error);
     }
   };
+
   const checkEnrollment = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -239,7 +256,9 @@ const ClassDetails = () => {
         .maybeSingle();
 
       if (error) throw error;
+      
       setIsEnrolled(!!data);
+      setEnrollmentData(data);
     } catch (error: any) {
       console.error("Error checking enrollment:", error);
     }
@@ -249,12 +268,8 @@ const ClassDetails = () => {
     try {
       const { data, error } = await supabase
         .from("forum_messages")
-        .select(
-          `
-          *
-        `
-        )
-        .eq("class_id", classData.id)
+        .select(`*, profiles:user_id (full_name)`)
+        .eq("class_id", id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -286,54 +301,87 @@ const ClassDetails = () => {
     };
   };
 
-  const handleEnroll = async () => {
-    if (classData?.source === "mock") {
-      toast({
-        title: "Exemplo de turma",
-        description: "Este é um exemplo para visualizar o mapa e os detalhes.",
-      });
-      return;
-    }
-
-    if (enrollmentCount >= classData.capacity) {
-      toast({
-        title: "Turma cheia",
-        description: "Esta turma já atingiu o número máximo de alunos.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setEnrolling(true);
+  const startEnrollment = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate("/login", { state: { from: location } });
         return;
       }
 
-      const { error } = await supabase.from("enrollments").insert({
-        class_id: id,
-        user_id: user.id,
-      });
+      if (enrollmentCount >= classData.capacity) {
+          toast({ title: "Turma cheia", variant: "destructive" });
+          return;
+        }
+        
+        setPaymentStatus("pending");
+        setShowPayment(true);
 
-      if (error) throw error;
+        setTimeout(() => {
+          setPaymentStatus("success");
 
-      toast({
-        title: "Matrícula realizada!",
-        description: "Você foi matriculado na turma com sucesso.",
-      });
-
-      setIsEnrolled(true);
-      setEnrollmentCount(enrollmentCount + 1);
+          setTimeout(() => {
+            confirmPaymentAndEnroll();
+          }, 1500);
+        }, 4000);
     } catch (error: any) {
       toast({
         title: "Erro ao matricular",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const confirmPaymentAndEnroll = async () => {
+    setEnrolling(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/login", { state: { from: location } });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("enrollments")
+        .upsert({
+          class_id: id,
+          user_id: user.id,
+          status: 'active',
+          last_payment_date: new Date().toISOString(),
+          next_payment_due: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        }, { onConflict: 'class_id, user_id' });
+
+      if (error) throw error;
+
+      toast({
+        title: "Pagamento Confirmado!",
+        description: "Sua matrícula está ativa.",
+        className: "bg-green-50 border-green-200"
+      });
+
+      setIsEnrolled(true);
+      setEnrollmentData({
+         status: 'active',
+         class_id: id,
+         user_id: user.id
+      });
+      
+      if (!isEnrolled) {
+        setEnrollmentCount(enrollmentCount + 1);
+      }
+      
+      setShowPayment(false);
+
+    } catch (error: any) {
+      toast({
+        title: "Erro na matrícula",
+        description: error.message,
+        variant: "destructive",
+      });
+      setShowPayment(false);
     } finally {
       setEnrolling(false);
     }
@@ -348,251 +396,300 @@ const ClassDetails = () => {
   }
 
   const availableSpots = classData.capacity - enrollmentCount;
-  const originParam = userLocation ? `${userLocation.lat},${userLocation.lng}` : "";
-  const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    classData.location_address
-  )}&travelmode=walking${originParam ? `&origin=${originParam}` : ""}`;
+  // Link para abrir no App do Google Maps (botão externo)
+  const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(classData.location_address)}${userLocation ? `&origin=${userLocation.lat},${userLocation.lng}` : ""}&travelmode=walking`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white pb-20">
-      <PageHeader title="Detalhes da Aula" />
-      
-      <div className="w-full h-48 bg-gradient-to-br from-[#5F94E2] via-[#4A84D1] to-[#25C588] relative">
-        {isEnrolled && (
-          <div className="absolute top-4 right-4">
-            <Badge className="bg-white text-[#25C588] text-base px-4 py-2 shadow-lg font-semibold">
-              ✓ Matriculado
-            </Badge>
-          </div>
-        )}
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background py-12 px-4">
+      <div className="container max-w-4xl mx-auto">
+        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+          ← Voltar
+        </Button>
 
-      <div className="container max-w-2xl mx-auto px-4 -mt-6">
-        <div className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
-          
-          <div>
-            <h1 className="text-2xl font-bold text-[#1756AC] mb-1">
-              {classData.activity}
-            </h1>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-200">
-              <div className="rounded-lg bg-white p-2 shadow-sm">
-                <Clock className="h-5 w-5 text-[#5F94E2]" />
-              </div>
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between">
               <div>
-                <p className="font-semibold text-[#1756AC]">{classData.schedule?.split(',')[0] || classData.schedule}</p>
-                <p className="text-sm text-muted-foreground">
-                  {classData.schedule?.split(',')[1]?.trim() || '10:00 - 11:00'}
-                </p>
+                <CardTitle className="text-3xl">{classData.title}</CardTitle>
+                <CardDescription className="text-lg mt-2">
+                  {classData.description || "Sem descrição disponível"}
+                </CardDescription>
               </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-200">
-              <div className="rounded-lg bg-white p-2 shadow-sm">
-                <MapPin className="h-5 w-5 text-[#5F94E2]" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-[#1756AC]">{classData.location_address?.split(',')[0] || 'Local'}</p>
-                <p className="text-sm text-muted-foreground">
-                  {classData.location_address?.split(',').slice(1).join(',').trim() || classData.location_address}
-                </p>
-              </div>
-            </div>
-
-            {classData.description && (
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-200">
-                <div className="rounded-lg bg-white p-2 shadow-sm">
-                  <Users className="h-5 w-5 text-[#5F94E2]" />
-                </div>
-                <div>
-                  <p className="font-semibold text-[#1756AC]">
-                    {enrollmentCount}/{classData.capacity} participantes
-                  </p>
-                  <p className="text-sm text-muted-foreground">{classData.description}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {professional && (
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-[#1756AC] mb-4">Seu Professor</h3>
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  {professional.avatar_url ? (
-                    <img 
-                      src={professional.avatar_url} 
-                      alt={professional.full_name}
-                      className="h-16 w-16 rounded-full object-cover border-2 border-[#5F94E2]"
-                    />
-                  ) : (
-                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#5F94E2] to-[#1756AC] flex items-center justify-center text-white text-xl font-bold">
-                      {professional.full_name?.charAt(0) || 'P'}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-[#1756AC]">{professional.full_name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {professional.specialty || 'Fisioterapeuta especialista'}
-                  </p>
-                </div>
-                {isEnrolled && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/chat?contact=${professional.user_id}`)}
-                    className="border-[#5F94E2] text-[#5F94E2] hover:bg-[#5F94E2] hover:text-white"
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Chat
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="border-t pt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-[#5F94E2]" />
-                <h3 className="text-lg font-semibold text-[#1756AC]">Distância até a aula</h3>
-              </div>
-              {distanceInfo && (
-                <Badge variant="secondary" className="bg-[#25C588]/20 text-[#25C588] border-[#25C588]/30">
-                  {distanceInfo.distanceText} • {distanceInfo.durationText}
+              {isEnrolled && (
+                <Badge variant={enrollmentData?.status === 'active' ? "default" : "destructive"}>
+                  {enrollmentData?.status === 'active' ? "Matrícula Ativa" : "Pagamento Pendente"}
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              {distanceInfo
-                ? `Você está a ${distanceInfo.distanceText} (aprox. ${distanceInfo.durationText}) do local informado.`
-                : locationStatus}
-            </p>
-            {mapUrl ? (
-              <>
-                <div className="aspect-video w-full overflow-hidden rounded-xl border shadow-sm">
-                  <iframe
-                    title="Mapa até a aula"
-                    src={mapUrl}
-                    className="h-full w-full"
-                    loading="lazy"
-                    allowFullScreen
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4">
+              <div className="flex items-center gap-3">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium">Horário:</span>
+                <span>{classData.schedule}</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <MapPin className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium">Local:</span>
+                <span>{classData.location_address}</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Users className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium">Vagas:</span>
+                <span>
+                  {enrollmentCount}/{classData.capacity || classData.max_students}
+                  {availableSpots > 0
+                    ? ` (${availableSpots} disponíveis)`
+                    : " (Turma cheia)"}
+                </span>
+              </div>
+
+              {professional && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium">Professor:</span>
+                    <span>{professional.full_name}</span>
+                  </div>
+                  {isEnrolled && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        navigate(`/chat?contact=${professional.user_id}`)
+                      }
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Chat
+                    </Button>
+                  )}
                 </div>
-                <Button asChild variant="outline" size="sm" className="w-full">
-                  <a href={routeUrl} target="_blank" rel="noreferrer">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    Abrir rota no Google Maps
-                  </a>
+              )}
+
+              {classData.price > 0 && (
+                <div className="flex items-center gap-3">
+                  <span className="font-medium">Valor:</span>
+                  <span className="text-xl font-bold text-primary">
+                    R$ {classData.price.toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Distância até a aula</h3>
+                </div>
+                {distanceInfo && (
+                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                     🚶 {distanceInfo.distanceText} • {distanceInfo.durationText}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {distanceInfo
+                  ? `Você está a ${distanceInfo.distanceText} do local.`
+                  : locationStatus}
+              </p>
+              
+              {mapUrl ? (
+                <>
+                  <div className="aspect-video w-full overflow-hidden rounded-lg border shadow-sm bg-gray-100">
+                    <img
+                      src={mapUrl}
+                      alt="Mapa até a aula"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button asChild variant="outline" size="sm" className="mt-3">
+                      <a href={routeUrl} target="_blank" rel="noreferrer">
+                        Abrir rota no Google Maps
+                      </a>
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground text-center">
+                  Carregando mapa...
+                </div>
+              )}
+            </div>
+
+            {!isEnrolled && (
+              <>
+                <Separator />
+                <Button
+                  onClick={startEnrollment}
+                  disabled={enrolling || availableSpots <= 0}
+                  className="w-full"
+                  size="lg"
+                >
+                  {enrolling ? "Matriculando..." : "Confirmar Inscrição"}
                 </Button>
               </>
-            ) : (
-              <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground text-center">
-                Configure a chave do Google Maps para visualizar o mapa
-              </div>
             )}
-          </div>
 
-          {!isEnrolled && (
-            <Button
-              onClick={handleEnroll}
-              disabled={enrolling || availableSpots <= 0}
-              className="w-full h-14 text-lg font-semibold bg-[#25C588] hover:bg-[#25C588]/90 text-white rounded-xl shadow-lg"
-              size="lg"
-            >
-              {enrolling ? "Matriculando..." : availableSpots <= 0 ? "Turma Cheia" : "🎯 Participar desta Aula"}
-            </Button>
-          )}
-
-          {isEnrolled && (
-            <>
-              <div className="border-t pt-6 space-y-4">
-                <div className="flex items-center justify-between">
+            {isEnrolled && (
+              <>
+                <Separator />
+                {enrollmentData?.status === 'payment_pending' && (
+                  <div className="mt-6 mb-6">
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded-r">
+                      <div className="flex">
+                        <div className="ml-3">
+                          <p className="text-sm text-yellow-700 font-medium">
+                            Atenção: Sua mensalidade venceu ou está pendente.
+                          </p>
+                          <p className="text-xs text-yellow-600 mt-1">
+                            Realize o pagamento para regularizar seu acesso.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={startEnrollment} 
+                      className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
+                    >
+                      Pagar Mensalidade (R$ {classData.price?.toFixed(2)})
+                    </Button>
+                  </div>
+                )}
+                <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-[#5F94E2]" />
-                    <h3 className="text-lg font-semibold text-[#1756AC]">
+                    <Users className="h-5 w-5" />
+                    <h3 className="text-xl font-semibold">
                       Participantes da Turma
                     </h3>
                   </div>
-                  <Badge variant="secondary" className="bg-[#5F94E2]/20 text-[#5F94E2] border-[#5F94E2]/30">
-                    {enrollmentCount}/{classData.capacity}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {classmates.length}{" "}
-                  {classmates.length === 1 ? "aluno matriculado" : "alunos matriculados"}
-                </p>
+                  <p className="text-sm text-muted-foreground">
+                    {classmates.length}{" "}
+                    {classmates.length === 1
+                      ? "aluno matriculado"
+                      : "alunos matriculados"}
+                  </p>
 
-                <div className="grid gap-2">
-                  {classmates.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-4">
-                      Nenhum participante encontrado
-                    </p>
-                  ) : (
-                    classmates.map((mate: any) => (
-                      <div 
-                        key={mate.id + mate.full_name}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border"
-                      >
-                        {mate.avatar_url ? (
-                          <img
-                            className="h-10 w-10 rounded-full object-cover border-2 border-[#5F94E2]"
-                            src={mate.avatar_url}
-                            alt={mate.full_name}
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#5F94E2] to-[#1756AC] flex items-center justify-center text-white font-semibold">
-                            {mate.full_name?.charAt(0) || 'A'}
-                          </div>
-                        )}
-                        <span className="font-medium text-[#1756AC]">
-                          {mate.full_name || "Aluno"}
-                        </span>
-                      </div>
-                    ))
-                  )}
+                  <div className="grid gap-2">
+                    {classmates.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-4">
+                        Nenhum participante encontrado
+                      </p>
+                    ) : (
+                      classmates.map((mate: any) => (
+                        <Card key={mate.enrollment_id}>
+                          <CardContent className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {/* Avatar placeholder se não tiver URL */}
+                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                 <User className="h-5 w-5 text-gray-500" />
+                              </div>
+                              <span className="font-medium">
+                                {mate.full_name || "Aluno"}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="border-t pt-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-[#5F94E2]" />
-                  <h3 className="text-lg font-semibold text-[#1756AC]">Fórum da Turma</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Comunicados e avisos do professor
-                </p>
+                <Separator />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    <h3 className="text-xl font-semibold">Fórum da Turma</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Comunicados e avisos do professor
+                  </p>
 
-                <div className="space-y-3">
-                  {forumMessages.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8 bg-gray-50 rounded-lg">
-                      Ainda não há mensagens no fórum
-                    </p>
-                  ) : (
-                    forumMessages.map((message) => (
-                      <div key={message.id} className="p-4 rounded-lg bg-gray-50 border">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="font-semibold text-[#1756AC]">
-                            {message.profiles?.full_name || "Professor"}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(message.created_at).toLocaleString("pt-BR")}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-700">{message.message}</p>
-                      </div>
-                    ))
-                  )}
+                  <div className="space-y-3">
+                    {forumMessages.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        Ainda não há mensagens no fórum
+                      </p>
+                    ) : (
+                      forumMessages.map((message) => (
+                        <Card key={message.id}>
+                          <CardContent className="pt-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="font-semibold">
+                                {message.profiles?.full_name || "Professor"}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(message.created_at).toLocaleString(
+                                  "pt-BR"
+                                )}
+                              </span>
+                            </div>
+                            <p className="text-sm">{message.message}</p>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
+      <Dialog open={showPayment} onOpenChange={setShowPayment}>
+        <DialogContent className="sm:max-w-md text-center bg-white backdrop-blur-none">
+          <DialogHeader>
+            <DialogTitle>Pagamento via Pix</DialogTitle>
+            <DialogDescription>
+              Escaneie o QR Code para confirmar sua matrícula na turma.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center py-6 space-y-4">
+            
+            {paymentStatus === "pending" ? (
+              <div className="relative animate-pulse">
+                <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-300">
+                  <QrCode className="w-32 h-32 text-gray-800" />
+                </div>
+                <p className="text-sm text-muted-foreground mt-4">
+                  Aguardando confirmação do banco...
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center animate-in zoom-in duration-300">
+                <div className="bg-green-100 p-4 rounded-full mb-4">
+                   <CheckCircle2 className="w-16 h-16 text-green-600" />
+                </div>
+                <h3 className="text-xl font-bold text-green-700">Pagamento Confirmado!</h3>
+                <p className="text-gray-500">Finalizando sua matrícula...</p>
+              </div>
+            )}
+
+            {paymentStatus === "pending" && (
+              <div className="w-full space-y-2">
+                <div className="flex items-center space-x-2">
+                  <div className="grid flex-1 gap-2">
+                    <Button variant="outline" size="sm" className="w-full text-xs text-muted-foreground">
+                      00020126580014BR.GOV.BCB.PIX0136123e4567-e89b...
+                      <Copy className="ml-2 h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Tempo restante: 04:59
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
