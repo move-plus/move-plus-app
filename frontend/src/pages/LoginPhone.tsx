@@ -67,7 +67,7 @@ export default function LoginPhone() {
 
       toast({ title: "Bem-vindo ao Move+!" });
       
-      const destination = location.state?.from?.pathname || "/";
+      const destination = location.state?.from?.pathname || "/onboarding";
       console.log("Navegando para:", destination);
 
       navigate(destination, { 

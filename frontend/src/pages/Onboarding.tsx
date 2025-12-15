@@ -14,6 +14,11 @@ export default function Onboarding() {
   const { user, role, fetchRole } = useAuth();
   
   const [name, setName] = useState("");
+
+  if (role) {
+    navigate("/minhas-turmas", { replace: true });
+  }
+
   const handleFinish = async () => {
     try {
       const { error } = await supabase
