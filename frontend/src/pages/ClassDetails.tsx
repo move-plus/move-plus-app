@@ -643,7 +643,7 @@ const ClassDetails = () => {
         </Card>
       </div>
       <Dialog open={showPayment} onOpenChange={setShowPayment}>
-        <DialogContent className="sm:max-w-md text-center">
+        <DialogContent className="sm:max-w-md text-center bg-white backdrop-blur-none">
           <DialogHeader>
             <DialogTitle>Pagamento via Pix</DialogTitle>
             <DialogDescription>

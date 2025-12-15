@@ -13,6 +13,12 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        primary: ['Cocogoose', 'Raleway', 'sans-serif'],
+        secondary: ['Raleway', 'sans-serif'],
+        cocogoose: ['Cocogoose', 'Raleway', 'sans-serif'],
+        raleway: ['Raleway', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

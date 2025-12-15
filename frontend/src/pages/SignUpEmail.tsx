@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Lock, User, Loader2, ArrowRight } from "lucide-react";
+import { Mail, Lock, User, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
 
@@ -49,7 +49,6 @@ export default function SignUpEmail() {
         toast({ title: "Conta criada com sucesso!" });
 
         await fetchRole(data.user.id);
-        console.log("Navegando para cadastro profissional...");
         navigate("/cadastro-profissional");
       }
 
@@ -65,24 +64,30 @@ export default function SignUpEmail() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F5F7FA] px-4">
-      <div className="w-full max-w-md bg-white p-8 shadow-xl rounded-3xl border border-gray-100">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-white px-4">
+      <div className="w-full max-w-md bg-white p-8 shadow-sm rounded-xl border relative">
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-6 left-6 text-gray-600 hover:text-[#5F94E2] transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
         
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#5F94E2] mb-2">Criar Conta</h1>
-          <p className="text-gray-500">Cadastro exclusivo para Professores</p>
+          <h1 className="text-2xl font-bold text-[#1756AC] mb-2">Criar Conta</h1>
+          <p className="text-sm text-gray-600">Cadastro exclusivo para Professores</p>
         </div>
 
-        <form onSubmit={handleSignUp} className="space-y-6">
+        <form onSubmit={handleSignUp} className="space-y-5">
           <div className="space-y-4">
             
             <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Nome Completo</label>
+              <label className="text-sm font-medium text-gray-700">Nome Completo</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Seu nome"
-                  className="pl-10 h-14 bg-gray-50 border-gray-200"
+                  className="pl-10 h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -92,13 +97,13 @@ export default function SignUpEmail() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">E-mail</label>
+              <label className="text-sm font-medium text-gray-700">E-mail</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="email"
                   placeholder="seu@email.com"
-                  className="pl-10 h-14 bg-gray-50 border-gray-200"
+                  className="pl-10 h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -108,13 +113,13 @@ export default function SignUpEmail() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Senha</label>
+              <label className="text-sm font-medium text-gray-700">Senha</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="password"
                   placeholder="Mínimo 6 caracteres"
-                  className="pl-10 h-14 bg-gray-50 border-gray-200"
+                  className="pl-10 h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={6}
@@ -128,15 +133,15 @@ export default function SignUpEmail() {
 
           <Button 
             type="submit" 
-            className="w-full h-14 text-lg font-bold bg-[#5F94E2] hover:bg-[#1756AC] text-white rounded-xl"
+            className="w-full h-11 text-base bg-[#5F94E2] hover:bg-[#1756AC] transition-colors mt-6"
             disabled={loading}
           >
-            {loading ? <Loader2 className="animate-spin" /> : <>Criar Conta <ArrowRight className="ml-2" /></>}
+            {loading ? <Loader2 className="animate-spin" /> : <>Criar Conta <ArrowRight className="ml-2 h-4 w-4" /></>}
           </Button>
         </form>
 
-        <div className="mt-8 text-center">
-          <Link to="/login-profissional" className="text-sm text-gray-500 hover:text-[#5F94E2]">
+        <div className="mt-6 text-center">
+          <Link to="/login-profissional" className="text-sm text-gray-600 hover:text-[#5F94E2] transition-colors">
             Já tem conta? Faça login
           </Link>
         </div>

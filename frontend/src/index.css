@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,6 +11,42 @@
   
   Fonts: Cocogoose (Primary/Titles), Raleway (Secondary/Body)
 */
+
+/* Cocogoose Pro - Light */
+@font-face {
+  font-family: 'Cocogoose';
+  src: url('/fonts/Cocogoose-Pro-Light-trial.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Cocogoose Pro - Semilight */
+@font-face {
+  font-family: 'Cocogoose';
+  src: url('/fonts/Cocogoose-Pro-Semilight-trial.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Cocogoose Pro - Regular */
+@font-face {
+  font-family: 'Cocogoose';
+  src: url('/fonts/Cocogoose-Pro-Regular-trial.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Cocogoose Pro - Bold */
+@font-face {
+  font-family: 'Cocogoose';
+  src: url('/fonts/Cocogoose-Pro-Bold-trial.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 @layer base {
   :root {
@@ -111,13 +149,133 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Cocogoose', sans-serif; /* Fonte Secundária/Corpo */
+    font-family: 'Raleway', sans-serif; /* Fonte Secundária/Corpo */
+    font-weight: 400;
   }
 
   /* Aplicação da Fonte Primária para Títulos */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Cocogoose', sans-serif;
-    @apply font-bold;
+    font-family: 'Cocogoose', 'Raleway', sans-serif;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+  }
+  
+  /* Escala Tipográfica Padronizada */
+  h1 {
+    font-size: 2rem;        /* 32px */
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  
+  h2 {
+    font-size: 1.5rem;      /* 24px */
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  
+  h3 {
+    font-size: 1.25rem;     /* 20px */
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  
+  h4 {
+    font-size: 1.125rem;    /* 18px */
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  
+  h5 {
+    font-size: 1rem;        /* 16px */
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  
+  h6 {
+    font-size: 0.875rem;    /* 14px */
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  
+  /* Corpo de texto */
+  body {
+    font-size: 1rem;        /* 16px */
+    line-height: 1.6;
+  }
+  
+  p {
+    font-size: 1rem;        /* 16px */
+    line-height: 1.6;
+  }
+  
+  small {
+    font-size: 0.875rem;    /* 14px */
+    line-height: 1.5;
+  }
+  
+  /* Botões também usam Cocogoose */
+  button {
+    font-family: 'Cocogoose', 'Raleway', sans-serif;
+    font-size: 0.9375rem;   /* 15px */
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+  
+  /* Labels com fonte secundária mas peso médio */
+  label {
+    font-family: 'Raleway', sans-serif;
+    font-size: 0.875rem;    /* 14px */
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  
+  /* Inputs e selects */
+  input, select, textarea {
+    font-family: 'Raleway', sans-serif;
+    font-size: 0.9375rem;   /* 15px */
+    line-height: 1.5;
+  }
+  
+  /* Texto pequeno auxiliar */
+  .text-xs {
+    font-size: 0.75rem;     /* 12px */
+    line-height: 1.4;
+  }
+  
+  .text-sm {
+    font-size: 0.875rem;    /* 14px */
+    line-height: 1.5;
+  }
+  
+  .text-base {
+    font-size: 1rem;        /* 16px */
+    line-height: 1.6;
+  }
+  
+  .text-lg {
+    font-size: 1.125rem;    /* 18px */
+    line-height: 1.5;
+  }
+  
+  .text-xl {
+    font-size: 1.25rem;     /* 20px */
+    line-height: 1.4;
+  }
+  
+  .text-2xl {
+    font-size: 1.5rem;      /* 24px */
+    line-height: 1.3;
+  }
+  
+  .text-3xl {
+    font-size: 1.875rem;    /* 30px */
+    line-height: 1.2;
+  }
+  
+  .text-4xl {
+    font-size: 2.25rem;     /* 36px */
+    line-height: 1.1;
   }
 }
 

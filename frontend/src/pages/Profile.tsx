@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,6 +59,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     role: "",
@@ -204,13 +206,13 @@ export default function Profile() {
     navigate("/");
   };
 
-  const handleAvatarUpload = async (
+ const handleAvatarUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
+    // 1. Validações (Tipo e Tamanho)
     if (!file.type.startsWith("image/")) {
       toast({
         title: "Erro",
@@ -220,7 +222,6 @@ export default function Profile() {
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Erro",
@@ -231,62 +232,81 @@ export default function Profile() {
     }
 
     setUploading(true);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) return;
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Usuário não autenticado");
 
-    const oldAvatarUrl = profileData?.avatar_url;
-    if (oldAvatarUrl) {
-      const oldPath = oldAvatarUrl.split("/").slice(-2).join("/");
-      await supabase.storage.from("avatars").remove([oldPath]);
-    }
+      // 2. Prepara o nome do arquivo
+      // Adicionamos um timestamp para evitar cache do navegador ao trocar a foto
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(fileName, file);
+      // 3. Remove a foto antiga do Storage (Opcional, mas boa prática para economizar espaço)
+      const oldAvatarUrl = profileData?.avatar_url;
+      if (oldAvatarUrl) {
+        // Tenta extrair o path do arquivo antigo da URL
+        const oldPath = oldAvatarUrl.split("/avatars/")[1]; 
+        if (oldPath) {
+             await supabase.storage.from("avatars").remove([oldPath]);
+        }
+      }
 
-    if (uploadError) {
+      // 4. Faz o Upload para o Bucket 'avatars'
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // 5. Gera a URL Pública
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(fileName);
+
+      // 6. Atualiza a tabela 'profiles' (Centralizada)
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", session.user.id);
+
+      if (updateError) throw updateError;
+
+      // 7. ATUALIZA O ESTADO LOCAL (Para a imagem mudar na hora na tela)
+      setProfileData((prev) => ({
+        ...prev,
+        avatar_url: publicUrl,
+        // Mantém os outros campos obrigatórios do tipo ProfileData
+        role: prev.role,
+        full_name: prev.full_name,
+        bio: prev.bio,
+        email: prev.email,
+        phone: prev.phone,
+        address: prev.address,
+        cpf: prev.cpf,
+        gender: prev.gender,
+        birth_date: prev.birth_date
+      }));
+
       toast({
-        title: "Erro ao fazer upload",
-        description: uploadError.message,
+        title: "Foto atualizada",
+        description: "Sua foto de perfil foi atualizada com sucesso.",
+      });
+
+    } catch (error: any) {
+      console.error("Erro no upload:", error);
+      toast({
+        title: "Erro ao atualizar foto",
+        description: error.message || "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
+    } finally {
       setUploading(false);
-      return;
+      // Limpa o input para permitir selecionar a mesma foto novamente se necessário
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
-
-    // Get public URL
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("avatars").getPublicUrl(fileName);
-
-    // Update database
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ avatar_url: publicUrl })
-      .eq("id", session.user.id);
-
-    setUploading(false);
-
-    if (updateError) {
-      toast({
-        title: "Erro ao atualizar",
-        description: updateError.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setProfileData((prev: any) => ({ ...prev, avatar_url: publicUrl }));
-
-    toast({
-      title: "Foto atualizada",
-      description: "Sua foto de perfil foi atualizada com sucesso.",
-    });
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -371,22 +391,11 @@ export default function Profile() {
       .slice(0, 2) || "?";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-12">
-      <div className="container max-w-3xl">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 pb-24">
+      <PageHeader title="Meu Perfil" showBackButton={false} />
+      <div className="container max-w-3xl py-6">
         <Card>
-          <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <CardTitle className="text-3xl flex items-center gap-2">
-              <User className="h-8 w-8" />
-              Meu Perfil
-            </CardTitle>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              {authUser?.email && <span>{authUser.email}</span>}
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                Sair
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             {/* Avatar */}
             <div className="flex flex-col items-center mb-8">
               <div className="relative">
@@ -429,7 +438,7 @@ export default function Profile() {
                   {profileData?.role === "student"
                     ? "Perfil de aluno"
                     : profileData?.role === "professional"
-                    ? "Perfil de profissional"
+                    ? `Especialista em ${professionalData?.specialty || "Educação Física"}`
                     : "Perfil"}
                 </p>
               </div>
@@ -444,253 +453,271 @@ export default function Profile() {
               </Card>
             )}
 
-            {/* Dados */}
-            <div className="space-y-6">
-              {/* Nome */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="full_name"
-                  className="flex items-center gap-2"
-                >
-                  <User className="h-4 w-4" />
-                  Nome Completo
-                </Label>
-                <Input
-                  id="full_name"
-                  value={profileData.full_name || ""}
-                  onChange={(e) =>
-                    setProfileData({
-                      ...profileData,
-                      full_name: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              {/* Sexo */}
-              <div className="space-y-2">
-                <Label htmlFor="gender" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Sexo
-                </Label>
-                
-                <Select
-                  value={profileData.gender}
-                  onValueChange={(value: any) =>
-                    setProfileData({ ...profileData, gender: value })
-                  }
-                >
-                  <SelectTrigger id="gender">
-                    <SelectValue placeholder="Selecione o sexo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="masculino">Masculino</SelectItem>
-                    <SelectItem value="feminino">Feminino</SelectItem>
-                    <SelectItem value="outro">Outro</SelectItem>
-                    <SelectItem value="nao_informar">Prefiro não informar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Telefone */}
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  Telefone
-                </Label>
-                <Input
-                  id="phone"
-                  value={profileData.phone || ""}
-                  onChange={(e) =>
-                    setProfileData({ ...profileData , phone: e.target.value })
-                  }
-                />
-              </div>
-              {/* E-mail */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  E-mail
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profileData.email || ""}
-                  onChange={(e) =>
-                    setProfileData({ ...profileData, email: e.target.value })
-                  }
-                />
-              </div>
-              {/* CPF */}
-              <div className="space-y-2">
-                <Label htmlFor="cpf" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  CPF
-                </Label>
-                <Input
-                  id="cpf"
-                  type="text"
-                  value={profileData.cpf || ""}
-                  onChange={(e) =>
-                    setProfileData({ ...profileData, cpf: e.target.value })
-                  }
-                />
-              </div>
-              {/* Endereço */}
-              <div className="space-y-2">
-                <Label htmlFor="address" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Endereço
-                </Label>
-                <Input
-                  id="address"
-                  value={profileData.address || ""}
-                  onChange={(e) =>
-                    setProfileData({
-                      ...profileData,
-                      address: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              {/* Data de Nascimento */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="birth_date"
-                  className="flex items-center gap-2"
-                >
-                  <Calendar className="h-4 w-4" />
-                  Data de Nascimento
-                </Label>
-                <Input
-                  id="birth_date"
-                  type="date"
-                  value={profileData.birth_date || ""}
-                  onChange={(e: { target: { value: any; }; }) =>
-                    setProfileData({
-                      ...profileData,
-                      birth_date: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              {/* Dados do profissional */}
-              {profileData?.role === "professional" && professionalData && (
-                <><div className="space-y-2">
-                  <Label htmlFor="cref" className="flex items-center gap-2">
-                    <Award className="h-4 w-4" />
-                    CREF
+            {/* dados - só aparecem ao editar */}
+            {isEditing && (
+              <div className="space-y-6 mb-6 p-6 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30">
+                <h3 className="font-semibold text-lg text-[#1756AC] mb-4">Informações Completas</h3>
+             
+                <div className="space-y-2">
+                  <Label htmlFor="full_name" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Nome Completo
                   </Label>
                   <Input
-                    id="cref"
-                    value={professionalData.cref || ""}
-                    disabled
-                    className="bg-muted" />
-                </div><div className="space-y-2">
-                    <Label
-                      htmlFor="specialty"
-                      className="flex items-center gap-2"
-                    >
-                      <Award className="h-4 w-4" />
-                      Especialidade
-                    </Label>
-                    <Input
-                      id="specialty"
-                      value={professionalData.specialty || ""}
-                      onChange={(e) => setProfessionalData({
-                        ...professionalData,
-                        specialty: e.target.value,
-                      })} />
-                  </div></>
-              )}
-              {/* Dados do aluno */}
-              {profileData?.role === "student" && studentData && (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="emergency_contact_name"
-                      className="flex items-center gap-2"
-                    >
-                      <Phone className="h-4 w-4" />
-                      Nome do Contato de Emergência
-                    </Label>
-                    <Input
-                      id="emergency_contact_name"
-                      value={studentData.emergency_contact_name || ""}
-                      onChange={(e) =>
-                        setStudentData({
-                          ...studentData,
-                          emergency_contact_name: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="emergency_contact_phone"
-                      className="flex items-center gap-2"
-                    >
-                      <Phone className="h-4 w-4" />
-                      Telefone do Contato de Emergência
-                    </Label>
-                    <Input
-                      id="emergency_contact_phone"
-                      value={studentData.emergency_contact_phone || ""}
-                      onChange={(e) =>
-                        setStudentData({
-                          ...studentData,
-                          emergency_contact_phone: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="health_certificate" className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      Certificado de Saúde
-                    </Label>
+                    id="full_name"
+                    value={profileData.full_name || ""}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        full_name: e.target.value,
+                      })
+                    }
+                  />
+                </div>
 
-                    {/* 1. Link para Visualizar (O que você já fez) */}
-                    {studentData.health_certificate_url ? (
-                      <div className="flex items-center gap-2 mb-2">
+                <div className="space-y-2">
+                  <Label htmlFor="gender" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Sexo
+                  </Label>
+                  <Select
+                    value={profileData.gender}
+                    onValueChange={(value: any) =>
+                      setProfileData({ ...profileData, gender: value })
+                    }
+                  >
+                    <SelectTrigger id="gender">
+                      <SelectValue placeholder="Selecione o sexo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="masculino">Masculino</SelectItem>
+                      <SelectItem value="feminino">Feminino</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                      <SelectItem value="nao_informar">Prefiro não informar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Telefone
+                  </Label>
+                  <Input
+                    id="phone"
+                    value={profileData.phone}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, phone: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    E-mail
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profileData.email}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, email: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cpf" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    CPF
+                  </Label>
+                  <Input
+                    id="cpf"
+                    type="text"
+                    value={profileData.cpf}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, cpf: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Endereço
+                  </Label>
+                  <Input
+                    id="address"
+                    value={profileData.address}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        address: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="birth_date" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Data de Nascimento
+                  </Label>
+                  <Input
+                    id="birth_date"
+                    type="date"
+                    value={profileData.birth_date}
+                    onChange={(e: { target: { value: any } }) =>
+                      setProfileData({
+                        ...profileData,
+                        birth_date: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                {profileData?.role === "professional" && professionalData && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="cref" className="flex items-center gap-2">
+                        <Award className="h-4 w-4" />
+                        CREF
+                      </Label>
+                      <Input
+                        id="cref"
+                        value={professionalData.cref}
+                        disabled
+                        className="bg-muted"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="specialty" className="flex items-center gap-2">
+                        <Award className="h-4 w-4" />
+                        Especialidade
+                      </Label>
+                      <Input
+                        id="specialty"
+                        value={professionalData.specialty}
+                        onChange={(e) =>
+                          setProfessionalData({
+                            ...professionalData,
+                            specialty: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="verification_status" className="flex items-center gap-2">
+                        <Award className="h-4 w-4" />
+                        Status de Verificação
+                      </Label>
+                      <Input
+                        id="verification_status"
+                        value={professionalData.verification_status}
+                        disabled
+                        className="bg-muted"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {profileData?.role === "student" && studentData && (
+                  <div className="space-y-6 pt-4 border-t">
+                    <h4 className="font-semibold text-[#1756AC]">Informações de Emergência</h4>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="emergency_contact_name" className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        Nome do Contato de Emergência
+                      </Label>
+                      <Input
+                        id="emergency_contact_name"
+                        value={studentData.emergency_contact_name || ""}
+                        onChange={(e) =>
+                          setStudentData({
+                            ...studentData,
+                            emergency_contact_name: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="emergency_contact_phone" className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        Telefone do Contato de Emergência
+                      </Label>
+                      <Input
+                        id="emergency_contact_phone"
+                        value={studentData.emergency_contact_phone || ""}
+                        onChange={(e) =>
+                          setStudentData({
+                            ...studentData,
+                            emergency_contact_phone: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="health_certificate" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Certificado de Saúde
+                      </Label>
+                      {studentData.health_certificate_url ? (
                         <a
-                          href={studentData.health_certificate_url || ""}
+                          href={studentData.health_certificate_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary underline text-sm"
+                          className="text-[#5F94E2] underline hover:text-[#2D7DD2] block"
                         >
-                          Visualizar Certificado Atual
+                          Visualizar Certificado
                         </a>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Nenhum certificado anexado.
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Nenhum certificado anexado.
+                        </p>
+                      )}
+                      <Input
+                        id="health_certificate"
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png" // Restringe tipos de arquivo
+                        onChange={handleFileUpload}   // <--- Função que envia pro Supabase
+                        className="cursor-pointer"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Formatos aceitos: PDF, JPG, PNG (Max 5MB)
                       </p>
-                    )}
-
-                    {/* 2. Input para Fazer Upload (O que falta para "receber" do usuário) */}
-                    <Input
-                      id="health_certificate"
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png" // Restringe tipos de arquivo
-                      onChange={handleFileUpload}   // <--- Função que envia pro Supabase
-                      className="cursor-pointer"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Formatos aceitos: PDF, JPG, PNG (Max 5MB)
-                    </p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-            {/* Save Button */}
-            <div className="mt-8 flex justify-end">
+                )}
+              </div>
+            )}
+            <div className="mt-8">
               <Button
-                onClick={handleProfileSave}
+                onClick={async () => {
+                  if (isEditing) {
+                    await handleProfileSave();
+                    setIsEditing(false);
+                  } else {
+                    setIsEditing(true);
+                  }
+                }}
+                className="w-full bg-[#5F94E2] hover:bg-[#2D7DD2]"
                 disabled={saving}
-                className="w-full"
               >
-                {saving ? "Salvando..." : "Salvar Alterações"}
+                {isEditing ? (saving ? "Salvando..." : "Salvar Alterações") : "Editar Perfil"}
+              </Button>
+            </div>
+
+            <div className="mt-4">
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                className="w-full border-2 border-red-200 text-red-600 hover:bg-red-50"
+              >
+                Sair
               </Button>
             </div>
           </CardContent>

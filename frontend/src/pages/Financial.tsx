@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
   CardContent,
@@ -122,68 +123,39 @@ const Financial = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <div className="container mx-auto px-4 py-8">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/dashboard")}
-          className="mb-6"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Voltar ao Dashboard
-        </Button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white pb-24">
+      <PageHeader title="Financeiro" />
+      <div className="container max-w-4xl mx-auto px-4 py-6">
 
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold">Financeiro</h1>
-          <p className="text-xl text-muted-foreground mt-2">
-            Acompanhe seus ganhos e pagamentos
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
+          <div className="bg-gradient-to-br from-[#5F94E2] to-[#2D7DD2] rounded-xl shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm opacity-90">Total no Mês</p>
+              <Calendar className="h-5 w-5 opacity-90" />
+            </div>
+            <p className="text-3xl font-bold">R$ {monthlyTotal.toFixed(2)}</p>
+            <p className="text-xs opacity-75 mt-1">
+              Pagamentos recebidos este mês
+            </p>
+          </div>
+
+          <div className="bg-gradient-to-br from-[#25C588] to-[#1ea872] rounded-xl shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm opacity-90">Total no Ano</p>
+              <TrendingUp className="h-5 w-5 opacity-90" />
+            </div>
+            <p className="text-3xl font-bold">R$ {yearlyTotal.toFixed(2)}</p>
+            <p className="text-xs opacity-75 mt-1">
+              Acumulado em {new Date().getFullYear()}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <h3 className="text-lg font-semibold text-[#1756AC] mb-2">Histórico de Pagamentos</h3>
+          <p className="text-sm text-gray-600 mb-6">
+            Lista completa de todos os pagamentos recebidos
           </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <Card className="shadow-soft">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total no Mês
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                R$ {monthlyTotal.toFixed(2)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Pagamentos recebidos este mês
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-soft">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total no Ano
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
-                R$ {yearlyTotal.toFixed(2)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Acumulado em {new Date().getFullYear()}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="shadow-soft">
-          <CardHeader>
-            <CardTitle>Histórico de Pagamentos</CardTitle>
-            <CardDescription>
-              Lista completa de todos os pagamentos recebidos
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -237,8 +209,7 @@ const Financial = () => {
                 )}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+        </div>
       </div>
     </div>
   );

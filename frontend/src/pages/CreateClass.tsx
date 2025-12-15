@@ -1,13 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,42 +33,29 @@ const CreateClass = () => {
   const [professionalId, setProfessionalId] = useState<string | null>(null);
   const [mapUrl, setMapUrl] = useState("");
 
-  const handleAddressSelect = useCallback(({ address, lat, lng }: { address: string, lat: number, lng: number }) => {
-    console.log("📍 Endereço capturado:", address);
-    
-    setFormData(prev => ({
-      ...prev,
-      location_address: address,
-      lat: lat,
-      lng: lng
-    }));
-
-    const apiKey = "AIzaSyBEKe9FuiZDmFD1XSoTHzh4P5esSgrYDHk"; 
-    if (apiKey && apiKey !== "AIzaSyBEKe9FuiZDmFD1XSoTHzh4P5esSgrYDHk") {
-       const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x300&markers=color:red|${lat},${lng}&key=${apiKey}`;
-       setMapUrl(url);
-    }
-  }, []);
-
+  // 1. Recebendo os dados extras do Dashboard
   const demandData = location.state as {
     demandId?: string;
     activity?: string;
     schedule?: string;
     location?: string;
+    description?: string; // Novo: observacoes vem aqui
+    level?: string;       // Novo: nivel vem aqui
   } | null;
 
+  // 2. Preenchendo o formulário com os dados recebidos
   const [formData, setFormData] = useState({
     title: demandData?.activity || "",
-    description: "",
     category: "",
-    schedule: "",  
+    description: demandData?.description || "", // Atualiza a descrição
+    schedule: demandData?.schedule || "",
     location_address: demandData?.location || "",
     lat: null as number | null,
     lng: null as number | null, 
     capacity: "",
     price: "",
-    level: "",
-});
+    level: demandData?.level || "",             // Atualiza o nível
+  });
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -124,7 +105,7 @@ const CreateClass = () => {
       const { error } = await supabase.from("classes").insert({
         professional_id: professionalId,
         title: formData.title,
-        description: formData.description,
+        description: formData.description, // Agora envia a descrição corretamente
         category: formData.category,
         schedule: formData.schedule,
         capacity: parseInt(formData.capacity) || 10,
@@ -136,6 +117,16 @@ const CreateClass = () => {
     });
 
       if (error) throw error;
+
+      if (demandData?.demandId) {
+        const { error: updateError } = await supabase
+          .from("Demandas" as any) 
+          .update({ atendida: true })
+          .eq("id", demandData.demandId);
+
+      if (updateError) {
+          console.error("Erro ao atualizar status da demanda:", updateError);
+        }}
 
       toast({
         title: "Turma Cadastrada!",
@@ -159,31 +150,24 @@ const CreateClass = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold">
-            Cadastrar Nova Aula
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Preencha as informações da sua aula para começar a receber alunos
-          </p>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white pb-24">
+      <PageHeader title="Cadastrar Nova Aula" />
+      
+      <div className="container max-w-6xl mx-auto px-4">
+        <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <Card className="shadow-medium">
-              <CardHeader>
-                <CardTitle className="text-2xl">Informações da Aula</CardTitle>
-                <CardDescription className="text-base">
+            <div className="bg-white rounded-xl shadow-sm border p-6">
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-[#1756AC]">Informações da Aula</h2>
+                <p className="text-gray-600 mt-2 text-sm">
                   Quanto mais detalhes você fornecer, mais fácil será para os
                   alunos encontrarem sua aula
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
+                </p>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="title" className="text-base">
+                    <Label htmlFor="title" className="text-sm font-medium">
                       <FileText className="w-4 h-4 inline mr-2" />
                       Título da Aula *
                     </Label>
@@ -192,13 +176,13 @@ const CreateClass = () => {
                       placeholder="Ex: Yoga para Iniciantes"
                       value={formData.title}
                       onChange={(e) => handleChange("title", e.target.value)}
-                      className="text-base h-12"
+                      className="text-sm h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description" className="text-base">
+                    <Label htmlFor="description" className="text-sm font-medium">
                       Descrição
                     </Label>
                     <Textarea
@@ -208,14 +192,14 @@ const CreateClass = () => {
                       onChange={(e) =>
                         handleChange("description", e.target.value)
                       }
-                      className="text-base min-h-32"
+                      className="text-sm min-h-24 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                       rows={5}
                     />
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="category" className="text-base">
+                      <Label htmlFor="category" className="text-sm font-medium">
                         Categoria *
                       </Label>
                       <Select
@@ -224,42 +208,23 @@ const CreateClass = () => {
                           handleChange("category", value)
                         }
                       >
-                        <SelectTrigger id="category" className="text-base h-12">
+                        <SelectTrigger id="category" className="text-sm h-11 border-gray-300 hover:border-[#5F94E2] transition-colors">
                           <SelectValue placeholder="Selecione..." />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="outdoor">Ao Ar Livre</SelectItem>
-                          <SelectItem value="yoga">Yoga</SelectItem>
-                          <SelectItem value="gym">Musculação</SelectItem>
-                          <SelectItem value="pilates">Pilates</SelectItem>
-                          <SelectItem value="water">Hidroginástica</SelectItem>
-                          <SelectItem value="dance">Dança</SelectItem>
-                          <SelectItem value="stretch">Alongamento</SelectItem>
-                          <SelectItem value="crossfit">CrossFit</SelectItem>
-                          <SelectItem value="functional">Funcional</SelectItem>
-                          <SelectItem value="swimming">Natação</SelectItem>
-                          <SelectItem value="boxing">Boxe</SelectItem>
-                          <SelectItem value="martialarts">Artes Marciais</SelectItem>
-                          <SelectItem value="running">Corrida</SelectItem>
-                          <SelectItem value="cycling">Ciclismo</SelectItem>
-                          <SelectItem value="tennis">Tênis</SelectItem>
-                          <SelectItem value="soccer">Futebol</SelectItem>
-                          <SelectItem value="volleyball">Vôlei</SelectItem>
-                          <SelectItem value="basketball">Basquete</SelectItem>
-                          <SelectItem value="spinning">Spinning</SelectItem>
-                          <SelectItem value="zumba">Zumba</SelectItem>
-                          <SelectItem value="aerobics">Aeróbica</SelectItem>
-                          <SelectItem value="hiit">HIIT</SelectItem>
-                          <SelectItem value="climbing">Escalada</SelectItem>
-                          <SelectItem value="skateboarding">Skate</SelectItem>
-                          <SelectItem value="surfing">Surf</SelectItem>
-                          <SelectItem value="other">Outras</SelectItem>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="outdoor" className="hover:bg-blue-50 cursor-pointer">Ao Ar Livre</SelectItem>
+                          <SelectItem value="yoga" className="hover:bg-blue-50 cursor-pointer">Yoga</SelectItem>
+                          <SelectItem value="gym" className="hover:bg-blue-50 cursor-pointer">Musculação</SelectItem>
+                          <SelectItem value="pilates" className="hover:bg-blue-50 cursor-pointer">Pilates</SelectItem>
+                          <SelectItem value="water" className="hover:bg-blue-50 cursor-pointer">Hidroginástica</SelectItem>
+                          <SelectItem value="dance" className="hover:bg-blue-50 cursor-pointer">Dança</SelectItem>
+                          <SelectItem value="stretch" className="hover:bg-blue-50 cursor-pointer">Alongamento</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="level" className="text-base">
+                      <Label htmlFor="level" className="text-sm font-medium">
                         <GraduationCap className="w-4 h-4 inline mr-2" />
                         Nível *
                       </Label>
@@ -267,16 +232,16 @@ const CreateClass = () => {
                         value={formData.level}
                         onValueChange={(value) => handleChange("level", value)}
                       >
-                        <SelectTrigger id="level" className="text-base h-12">
+                        <SelectTrigger id="level" className="text-sm h-11 border-gray-300 hover:border-[#5F94E2] transition-colors">
                           <SelectValue placeholder="Selecione..." />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Iniciante">Iniciante</SelectItem>
-                          <SelectItem value="Intermediário">
+                        <SelectContent className="bg-white">
+                          <SelectItem value="Iniciante" className="hover:bg-blue-50 cursor-pointer">Iniciante</SelectItem>
+                          <SelectItem value="Intermediário" className="hover:bg-blue-50 cursor-pointer">
                             Intermediário
                           </SelectItem>
-                          <SelectItem value="Avançado">Avançado</SelectItem>
-                          <SelectItem value="Todos os níveis">
+                          <SelectItem value="Avançado" className="hover:bg-blue-50 cursor-pointer">Avançado</SelectItem>
+                          <SelectItem value="Todos os níveis" className="hover:bg-blue-50 cursor-pointer">
                             Todos os níveis
                           </SelectItem>
                         </SelectContent>
@@ -285,13 +250,17 @@ const CreateClass = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="location_address" className="text-base">
+                    <Label htmlFor="location_address" className="text-sm font-medium">
                       <MapPin className="w-4 h-4 inline mr-2" />
                       Localização *
                     </Label>
-                    <AddressAutocomplete 
-                      onAddressSelect={handleAddressSelect}
-                      defaultValue={formData.location_address}
+                    <Input
+                      id="location_address"
+                      placeholder="Ex: Parque da Cidade, Rua das Flores, 123"
+                      value={formData.location_address}
+                      onChange={(e) => handleChange("location_address", e.target.value)}
+                      className="text-sm h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
+                      required
                     />
                     
                     <input 
@@ -308,7 +277,7 @@ const CreateClass = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="schedule" className="text-base">
+                    <Label htmlFor="schedule" className="text-sm font-medium">
                       <Calendar className="w-4 h-4 inline mr-2" />
                       Horários *
                     </Label>
@@ -317,14 +286,14 @@ const CreateClass = () => {
                       placeholder="Ex: Segunda e Quarta, 8h às 9h"
                       value={formData.schedule}
                       onChange={(e) => handleChange("schedule", e.target.value)}
-                      className="text-base h-12"
+                      className="text-sm h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                       required
                     />
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="capacity" className="text-base">
+                      <Label htmlFor="capacity" className="text-sm font-medium">
                         <Users className="w-4 h-4 inline mr-2" />
                         Vagas Disponíveis
                       </Label>
@@ -336,13 +305,13 @@ const CreateClass = () => {
                         onChange={(e) =>
                           handleChange("capacity", e.target.value)
                         }
-                        className="text-base h-12"
+                        className="text-sm h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                         min="1"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="price" className="text-base">
+                      <Label htmlFor="price" className="text-sm font-medium">
                         <DollarSign className="w-4 h-4 inline mr-2" />
                         Valor Mensal (R$)
                       </Label>
@@ -352,7 +321,7 @@ const CreateClass = () => {
                         placeholder="Ex: 120"
                         value={formData.price}
                         onChange={(e) => handleChange("price", e.target.value)}
-                        className="text-base h-12"
+                        className="text-sm h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                         min="0"
                         step="0.01"
                       />
@@ -361,67 +330,63 @@ const CreateClass = () => {
 
                   <Button
                     type="submit"
-                    size="lg"
-                    className="w-full text-lg"
+                    className="w-full h-11 text-base bg-[#5F94E2] hover:bg-[#1756AC] transition-colors mt-6"
                     disabled={loading}
                   >
                     {loading ? "Cadastrando..." : "Cadastrar Turma"}
                   </Button>
                 </form>
-              </CardContent>
-            </Card>
+            </div>
           </div>
 
-          <div className="space-y-6">
-            <Card className="shadow-soft">
-              <CardHeader>
-                <CardTitle>Dicas para o Sucesso</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm">
-                <div className="space-y-2">
-                  <h4 className="font-semibold">📝 Título Atrativo</h4>
-                  <p className="text-muted-foreground">
+          <div className="space-y-5">
+            <div className="bg-white rounded-xl shadow-sm border p-5">
+              <h3 className="text-lg font-bold text-[#1756AC] mb-5">Dicas para o Sucesso</h3>
+              <div className="space-y-4 text-sm">
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-sm">📝 Título Atrativo</h4>
+                  <p className="text-gray-600 text-xs leading-relaxed">
                     Use títulos claros que descrevam exatamente o tipo de
                     atividade.
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <h4 className="font-semibold">📍 Localização Precisa</h4>
-                  <p className="text-muted-foreground">
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-sm">📍 Localização Precisa</h4>
+                  <p className="text-gray-600 text-xs leading-relaxed">
                     Forneça endereço completo para facilitar o encontro dos
                     alunos.
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <h4 className="font-semibold">⏰ Horários Flexíveis</h4>
-                  <p className="text-muted-foreground">
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-sm">⏰ Horários Flexíveis</h4>
+                  <p className="text-gray-600 text-xs leading-relaxed">
                     Ofereça opções de horários variados para atrair mais alunos.
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <h4 className="font-semibold">💰 Preço Justo</h4>
-                  <p className="text-muted-foreground">
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-sm">💰 Preço Justo</h4>
+                  <p className="text-gray-600 text-xs leading-relaxed">
                     Pesquise valores praticados na sua região para ser
                     competitivo.
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card className="shadow-soft bg-accent">
-              <CardContent className="p-6 space-y-4">
+            <div className="bg-gradient-to-br from-[#5F94E2] to-[#1756AC] rounded-xl shadow-sm p-5">
+              <div className="space-y-3">
                 <div className="text-center">
-                  <div className="text-4xl font-bold text-primary">10%</div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-4xl font-bold text-white">10%</div>
+                  <div className="text-sm text-white/80">
                     Taxa da plataforma
                   </div>
                 </div>
-                <p className="text-sm text-center text-muted-foreground">
+                <p className="text-sm text-center text-white/90">
                   Cobramos apenas quando você recebe um novo aluno. Sem taxas
                   fixas!
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>

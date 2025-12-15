@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { PageHeader } from "@/components/PageHeader";
 import {
   Card,
   CardContent,
@@ -10,10 +11,15 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   MapPin,
   Clock,
   MessageCircle,
+  CheckCircle2,
+  XCircle,
+  Calendar,
 } from "lucide-react";
 
 const MyClasses = () => {
@@ -28,6 +34,39 @@ const MyClasses = () => {
   useEffect(() => {
     fetchEnrolledClasses();
   }, []);
+
+  const getTodayClasses = () => {
+    const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long' });
+    const todayNormalized = today.toLowerCase();
+    
+    // mapa de dias da semana
+    const dayVariations: { [key: string]: string[] } = {
+      'segunda': ['segunda', 'segunda-feira', 'seg'],
+      'terça': ['terça', 'terca', 'terça-feira', 'terca-feira', 'ter'],
+      'quarta': ['quarta', 'quarta-feira', 'qua'],
+      'quinta': ['quinta', 'quinta-feira', 'qui'],
+      'sexta': ['sexta', 'sexta-feira', 'sex'],
+      'sábado': ['sábado', 'sabado', 'sab'],
+      'domingo': ['domingo', 'dom']
+    };
+    
+    return enrolledClasses.filter((classItem) => {
+      const schedule = classItem.schedule?.toLowerCase() || '';
+      
+      // verifica qual é o dia de hoje e procura por variações
+      for (const [day, variations] of Object.entries(dayVariations)) {
+        if (todayNormalized.includes(day)) {
+          return variations.some(v => schedule.includes(v));
+        }
+      }
+      
+      return false;
+    });
+  };
+
+  const getWeekClasses = () => {
+    return enrolledClasses;
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -70,10 +109,10 @@ const MyClasses = () => {
 
       setEnrolledClasses(classesData);
 
-      // Initialize notifications state
+  
       const notifState: { [key: string]: boolean } = {};
       classesData.forEach((cls: any) => {
-        // For now, all notifications are enabled by default
+  
         notifState[cls.id] = true;
       });
       setNotifications(notifState);
@@ -114,81 +153,154 @@ const MyClasses = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero from-primary/5 to-background py-12 px-4">
-      <div className="container max-w-6xl mx-auto">
-        <div className="max-w flex justify-between">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Minhas Turmas</h1>
-            <p className="text-muted-foreground">
-              Turmas em que você está matriculado
-            </p>
-          </div>
-          <Button variant="outline" onClick={handleLogout}>
-            Sair
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white pb-20">
+      <PageHeader title="Minhas Aulas" showBackButton={false} />
+      
+      <div className="container max-w-2xl mx-auto px-4 py-6">
+        <Tabs defaultValue="hoje" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-100 p-1">
+            <TabsTrigger 
+              value="hoje" 
+              className="text-base data-[state=active]:bg-white data-[state=active]:text-[#5F94E2] data-[state=active]:shadow-sm transition-all hover:bg-white/50"
+            >
+              Hoje
+            </TabsTrigger>
+            <TabsTrigger 
+              value="semana" 
+              className="text-base data-[state=active]:bg-white data-[state=active]:text-[#5F94E2] data-[state=active]:shadow-sm transition-all hover:bg-white/50"
+            >
+              Semana
+            </TabsTrigger>
+          </TabsList>
 
-        {enrolledClasses.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground mb-4">
-                Você ainda não está matriculado em nenhuma turma
-              </p>
-              <button
-                onClick={() => navigate("/buscar-turmas")}
-                className="text-primary hover:underline"
-              >
-                Encontrar turmas disponíveis
-              </button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {enrolledClasses.map((classItem) => (
-              <Card
-                onClick={() => navigate(`/turma-aluno/${classItem.id}`)}
-                key={classItem.id}
-                className="cursor-pointer hover:shadow-lg transition-all duration-200"
-              >
-                <CardHeader>
-                  <CardTitle className="flex items-start justify-between">
-                    <span className="hover:text-primary transition-colors">
-                      {classItem.title}
-                    </span>
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {classItem.description || "Sem descrição"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{classItem.schedule}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{classItem.location_address}</span>
+          <TabsContent value="hoje" className="space-y-4">
+            {getTodayClasses().length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                <div className="rounded-full bg-blue-100 p-6">
+                  <Calendar className="h-12 w-12 text-[#5F94E2]" />
+                </div>
+                <p className="text-xl font-semibold text-[#1756AC]">Nenhuma aula agendada</p>
+                <button
+                  onClick={() => navigate("/buscar-turmas")}
+                  className="text-[#5F94E2] hover:underline text-sm"
+                >
+                  Encontrar turmas disponíveis
+                </button>
+              </div>
+            ) : (
+              getTodayClasses().map((classItem) => (
+                <div
+                  key={classItem.id}
+                  className="bg-white rounded-xl shadow-sm border p-4 space-y-3"
+                >
+                  {/* Header com ícone e título */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="rounded-full bg-green-100 p-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-[#1756AC] text-lg">
+                        {classItem.title}
+                      </h3>
+                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 mt-1">
+                        Confirmada
+                      </Badge>
+                    </div>
                   </div>
 
-                  <div className="pt-4 border-t space-y-2">
+                  {/* Informações */}
+                  <div className="space-y-2 pl-11">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Clock className="h-4 w-4" />
+                      <span>{classItem.schedule}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <MapPin className="h-4 w-4" />
+                      <span>{classItem.location_address}</span>
+                    </div>
+                  </div>
+
+                  {/* Botão */}
+                  <div className="pt-2">
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate("/chat");
-                      }}
+                      className="w-full border-gray-300"
+                      onClick={() => navigate(`/turma-aluno/${classItem.id}`)}
                     >
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Chat com Professor
+                      Ver Detalhes
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                </div>
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="semana" className="space-y-4">
+            {getWeekClasses().length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                <div className="rounded-full bg-blue-100 p-6">
+                  <Calendar className="h-12 w-12 text-[#5F94E2]" />
+                </div>
+                <p className="text-xl font-semibold text-[#1756AC]">Nenhuma aula agendada</p>
+                <button
+                  onClick={() => navigate("/buscar-turmas")}
+                  className="text-[#5F94E2] hover:underline text-sm"
+                >
+                  Encontrar turmas disponíveis
+                </button>
+              </div>
+            ) : (
+              getWeekClasses().map((classItem) => (
+                <div
+                  key={classItem.id}
+                  className="bg-white rounded-xl shadow-sm border p-4 space-y-3"
+                >
+                  {/* Header com ícone e título */}
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="rounded-full bg-green-100 p-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-[#1756AC] text-lg">
+                        {classItem.title}
+                      </h3>
+                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 mt-1">
+                        Confirmada
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Informações */}
+                  <div className="space-y-2 pl-11">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Clock className="h-4 w-4" />
+                      <span>{classItem.schedule}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <MapPin className="h-4 w-4" />
+                      <span>{classItem.location_address}</span>
+                    </div>
+                  </div>
+
+                  {/* Botão */}
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      className="w-full border-gray-300"
+                      onClick={() => navigate(`/turma-aluno/${classItem.id}`)}
+                    >
+                      Ver Detalhes
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload } from "lucide-react";
+import { Upload, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
 const StudentRegistration = () => {
@@ -163,15 +163,22 @@ const StudentRegistration = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-8 px-4">
       <div className="container max-w-2xl mx-auto">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cadastro de Aluno</CardTitle>
-            <CardDescription>
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-6 text-gray-600 hover:text-[#5F94E2] transition-colors flex items-center gap-2"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-sm font-medium">Voltar</span>
+        </button>
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-[#1756AC]">Cadastro de Aluno</h2>
+            <p className="text-sm text-gray-600 mt-1">
               Preencha seus dados para começar a participar das turmas
-            </CardDescription>
-          </CardHeader>
+            </p>
+          </div>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -308,8 +315,7 @@ const StudentRegistration = () => {
                   : "Concluir Cadastro"}
               </Button>
             </form>
-          </CardContent>
-        </Card>
+        </div>
       </div>
     </div>
   );

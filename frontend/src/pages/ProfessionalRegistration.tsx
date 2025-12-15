@@ -18,6 +18,7 @@ import {
   Calendar,
   FileText,
   CreditCard,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
 
@@ -103,27 +104,34 @@ const ProfessionalRegistration = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold mb-4">Cadastro Profissional</h1>
-            <p className="text-xl text-muted-foreground">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-6 text-gray-600 hover:text-[#5F94E2] transition-colors flex items-center gap-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span className="text-sm font-medium">Voltar</span>
+          </button>
+          <div className="mb-6 text-center">
+            <h1 className="text-2xl font-bold text-[#1756AC] mb-2">Cadastro Profissional</h1>
+            <p className="text-sm text-gray-600">
               Complete seu perfil para começar a oferecer aulas
             </p>
           </div>
 
-          <Card className="shadow-medium">
-            <CardHeader>
-              <CardTitle>Informações Profissionais</CardTitle>
-              <CardDescription>
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <div className="mb-6">
+              <h2 className="text-lg font-bold text-[#1756AC]">Informações Profissionais</h2>
+              <p className="text-sm text-gray-600 mt-1">
                 Preencha todos os campos obrigatórios
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              </p>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="cref" className="text-base">
+                  <Label htmlFor="cref" className="text-sm font-medium">
                     <FileText className="w-4 h-4 inline mr-2" />
                     CREF *
                   </Label>
@@ -132,13 +140,13 @@ const ProfessionalRegistration = () => {
                     placeholder="Ex: 123456-G/SP"
                     value={formData.cref}
                     onChange={(e) => handleChange("cref", e.target.value)}
-                    className="text-base h-12"
+                    className="text-sm h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="specialty" className="text-base">
+                  <Label htmlFor="specialty" className="text-sm font-medium">
                     <GraduationCap className="w-4 h-4 inline mr-2" />
                     Especialidade *
                   </Label>
@@ -147,22 +155,20 @@ const ProfessionalRegistration = () => {
                     placeholder="Ex: Yoga, Pilates, Musculação"
                     value={formData.specialty}
                     onChange={(e) => handleChange("specialty", e.target.value)}
-                    className="text-base h-12"
+                    className="text-sm h-11 border-gray-300 hover:border-[#5F94E2] focus:border-[#5F94E2] transition-colors"
                     required
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  size="lg"
-                  className="w-full text-lg"
+                  className="w-full h-11 text-base bg-[#5F94E2] hover:bg-[#1756AC] transition-colors mt-6"
                   disabled={loading}
                 >
                   {loading ? "Salvando..." : "Concluir Cadastro"}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
+          </div>
         </div>
       </div>
     </div>

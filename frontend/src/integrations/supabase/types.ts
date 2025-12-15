@@ -110,33 +110,36 @@ export type Database = {
           }
         ];
       };
-      demands: {
+      Demandas: {
         Row: {
-          activity: string;
+          tipo: string;
           created_at: string | null;
           id: string;
-          location: string;
-          neighborhood: string;
-          num_interested: number;
-          schedule: string;
+          localizacao: string;
+          atendida: boolean;
+          horario: string;
+          nivel: string;
+          observacoes: string;
         };
         Insert: {
-          activity: string;
-          created_at?: string | null;
-          id?: string;
-          location: string;
-          neighborhood: string;
-          num_interested?: number;
-          schedule: string;
+          tipo: string;
+          created_at: string | null;
+          id: string;
+          localizacao: string;
+          atendida: boolean;
+          horario: string;
+          nivel: string;
+          observacoes: string;
         };
         Update: {
-          activity?: string;
-          created_at?: string | null;
-          id?: string;
-          location?: string;
-          neighborhood?: string;
-          num_interested?: number;
-          schedule?: string;
+          tipo: string;
+          created_at: string | null;
+          id: string;
+          localizacao: string;
+          atendida: boolean;
+          horario: string;
+          nivel: string;
+          observacoes: string;
         };
         Relationships: [];
       };
@@ -192,21 +195,18 @@ export type Database = {
           created_at: string | null;
           id: string;
           message: string;
-          user_id: string;
         };
         Insert: {
           class_id: string;
           created_at?: string | null;
           id?: string;
           message: string;
-          user_id: string;
         };
         Update: {
           class_id?: string;
           created_at?: string | null;
           id?: string;
           message?: string;
-          user_id?: string;
         };
         Relationships: [
           {

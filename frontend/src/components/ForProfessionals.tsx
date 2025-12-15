@@ -59,7 +59,7 @@ const ForProfessionals = () => {
               })}
             </div>
 
-            <Link to="/cadastrar-aulas">
+            <Link to="/criar-turma">
               <Button variant="secondary" size="lg" className="mt-4">
                 Cadastrar como Profissional
               </Button>

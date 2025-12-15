@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes as RoutesDOM, Route } from "react-router-dom";
-import Header from "./components/Header";
+import NavBar from "./components/NavBar";
 import Index from "./pages/Index";
+import Welcome from "./pages/Welcome";
 import SearchClasses from "./pages/SearchClasses";
 import CreateClass from "./pages/CreateClass";
+import CreateDemand from "./pages/CreateDemand";
 import Auth from "./pages/LoginEmail";
 import ProfessionalRegistration from "./pages/ProfessionalRegistration";
 import StudentRegistration from "./pages/StudentRegistration";
@@ -25,7 +27,8 @@ export function Routes() {
   return (
     <AuthGuard>
       <RoutesDOM>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={<Welcome />} />
+        <Route path="/home" element={<Index />} />
         <Route path="/login" element={<LoginPhone />} />
         <Route path="/login-profissional" element={<LoginEmail />} />
         <Route path="/signup" element={<SignUpEmail />} />
@@ -38,6 +41,14 @@ export function Routes() {
           element={
             <ProtectedRoute requireRole="student">
               <MyClasses />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/solicitar-turma"
+          element={
+            <ProtectedRoute requireRole="student">
+              <CreateDemand />
             </ProtectedRoute>
           }
         />
@@ -89,6 +100,14 @@ export function Routes() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <PrivateChat />
             </ProtectedRoute>
           }
         />
