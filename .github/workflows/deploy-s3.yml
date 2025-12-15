@@ -43,7 +43,7 @@ jobs:
 
       - name: Upload index.html separately
         run: |
-          aws s3 cp ./frontend/dist/index.html s3://${{ secrets.S3_BUCKET_NAME }}/index2.html
+          aws s3 cp ./frontend/dist/index.html s3://${{ secrets.S3_BUCKET_NAME }}/inde2.html
 
       - name: Create CloudFront invalidation
         run: |
