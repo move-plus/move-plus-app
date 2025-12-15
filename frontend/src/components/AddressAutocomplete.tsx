@@ -100,39 +100,40 @@ export const AddressAutocomplete = React.memo(function AddressAutocomplete({ onA
       <div ref={containerRef} className="place-picker-wrapper" />
       
       <style>{`
-        /* 1. Força o navegador a renderizar este pedaço como LIGHT mode */
-        .place-picker-wrapper {
-          color-scheme: light; 
-        }
-
-        /* 2. Variáveis Globais do Componente (Dropdown e Texto) */
+        /* 1. Força o componente a operar em modo LIGHT (Claro) */
         gmp-place-autocomplete {
-          --gm-px-color-surface: #ffffff;      /* Fundo do dropdown */
-          --gm-px-color-text-primary: #020617; /* Texto Principal (Preto quase total) */
-          --gm-px-color-text-secondary: #64748b; /* Texto Secundário (Cinza) */
-          --gm-px-color-primary: #2D7DD2;      /* Cor do Highlight (Seu Azul) */
+          color-scheme: light !important;
+          
+          /* Variáveis Oficiais do Google para cores (Isso sobrescreve o tema dark) */
+          --gm-px-color-surface: #ffffff !important;      /* Fundo Branco */
+          --gm-px-color-text-primary: #020617 !important; /* Texto Preto */
+          --gm-px-color-text-secondary: #64748b !important; /* Placeholder Cinza */
         }
 
-        /* 3. Estilização Direta do Input (A caixa de texto) */
-        /* O Google expõe a parte "input" para gente estilizar assim: */
+        /* 2. Estilização profunda do Input via 'part' */
         gmp-place-autocomplete::part(input) {
-          height: 48px;              /* Altura igual aos outros inputs */
-          background-color: #ffffff; /* Fundo Branco */
-          border: 1px solid #e2e8f0; /* Borda cinza suave (slate-200) */
-          border-radius: 8px;        /* Arredondamento */
+          background-color: #ffffff !important; /* Garante fundo branco */
+          color: #020617 !important;            /* Garante texto preto */
+          
+          height: 48px;
+          border: 1px solid hsl(216 30% 91%);
+          border-radius: 8px;
           padding-left: 14px;
           padding-right: 14px;
           font-size: 16px;
-          color: #ffffffff;
           box-sizing: border-box;
-          transition: border-color 0.2s;
         }
 
-        /* Efeito de Focus (quando clica) */
+        /* 3. Estilo ao Focar (Focus) */
         gmp-place-autocomplete::part(input):focus {
-          border-color: #2D7DD2;     /* Borda azul ao focar */
+          border-color: #2D7DD2;
           outline: none;
           box-shadow: 0 0 0 2px rgba(45, 125, 210, 0.2);
+        }
+
+        /* 4. Esconde aquela borda azul padrão do Google se ela estiver vazando */
+        .focus-ring {
+          display: none !important;
         }
       `}</style>
     </div>
