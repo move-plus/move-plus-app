@@ -41,7 +41,7 @@ jobs:
           aws sts get-caller-identity
           echo "Testing S3 access..."
           aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/dist/ || echo "⚠️ Warning: Cannot list bucket contents"
-          echo "Testing CloudFront access..."
+          echo "Testing CloudFront access... "
           aws cloudfront get-distribution --id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --query 'Distribution.Id' --output text || echo "⚠️ Warning: Cannot access CloudFront distribution"
 
       - name: Upload to S3 (sync)
