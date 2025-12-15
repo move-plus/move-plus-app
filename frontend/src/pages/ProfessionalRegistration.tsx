@@ -42,18 +42,11 @@ const ProfessionalRegistration = () => {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
+        console.log("Usuário não autenticado, redirecionando para signup...");
         navigate("/signup");
         return;
       }
       setUserId(user.id);
-
-      const { data: professional } = await supabase
-        .from("professionals")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (professional) navigate("/dashboard");
     };
 
     checkUser();

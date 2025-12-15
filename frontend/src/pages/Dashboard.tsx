@@ -178,7 +178,7 @@ const Dashboard = () => {
                   <p className="text-muted-foreground mb-4">
                     Você ainda não tem turmas cadastradas.
                   </p>
-                  <Button onClick={() => navigate("/cadastrar-aulas")}>
+                  <Button onClick={() => navigate("/criar-turma")}>
                     Cadastrar Primeira Turma
                   </Button>
                 </CardContent>

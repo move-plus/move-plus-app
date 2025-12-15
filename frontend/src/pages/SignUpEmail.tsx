@@ -48,7 +48,8 @@ export default function SignUpEmail() {
 
         toast({ title: "Conta criada com sucesso!" });
 
-        // await fetchRole(data.user.id);
+        await fetchRole(data.user.id);
+        console.log("Navegando para cadastro profissional...");
         navigate("/cadastro-profissional");
       }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -29,12 +29,33 @@ import {
   FileText,
 } from "lucide-react";
 
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+
 const CreateClass = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
+  const [mapUrl, setMapUrl] = useState("");
+
+  const handleAddressSelect = useCallback(({ address, lat, lng }: { address: string, lat: number, lng: number }) => {
+    console.log("📍 Endereço capturado:", address);
+    
+    setFormData(prev => ({
+      ...prev,
+      location_address: address,
+      lat: lat,
+      lng: lng
+    }));
+
+    const apiKey = "AIzaSyBEKe9FuiZDmFD1XSoTHzh4P5esSgrYDHk"; 
+    // Garanta que a chave está aqui ou use import.meta.env.VITE_GOOGLE_KEY
+    if (apiKey && apiKey !== "AIzaSyBEKe9FuiZDmFD1XSoTHzh4P5esSgrYDHk") {
+       const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x300&markers=color:red|${lat},${lng}&key=${apiKey}`;
+       setMapUrl(url);
+    }
+  }, []); // Array vazio = cria a função uma única vez
 
   const demandData = location.state as {
     demandId?: string;
@@ -49,10 +70,12 @@ const CreateClass = () => {
     category: "",
     schedule: "",  
     location_address: demandData?.location || "",
+    lat: null as number | null,
+    lng: null as number | null, 
     capacity: "",
     price: "",
     level: "",
-  });
+});
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -87,6 +110,7 @@ const CreateClass = () => {
       !formData.schedule ||
       !professionalId
     ) {
+      console.log("Dados do formulário incompletos:", formData);
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -106,9 +130,11 @@ const CreateClass = () => {
         schedule: formData.schedule,
         capacity: parseInt(formData.capacity) || 10,
         location_address: formData.location_address,
+        lat: formData.lat, 
+        lng: formData.lng, 
         price: parseFloat(formData.price) || 0,
         level: formData.level,
-      });
+    });
 
       if (error) throw error;
 
@@ -251,14 +277,24 @@ const CreateClass = () => {
                       <MapPin className="w-4 h-4 inline mr-2" />
                       Localização *
                     </Label>
-                    <Input
-                      id="location_address"
-                      placeholder="Ex: Parque da Cidade, Rua das Flores, 123"
-                      value={formData.location_address}
-                      onChange={(e) => handleChange("location_address", e.target.value)}
-                      className="text-base h-12"
-                      required
+                    <AddressAutocomplete 
+                      onAddressSelect={handleAddressSelect}
+                      defaultValue={formData.location_address}
                     />
+                    
+                    {/* Campo Hidden para garantir validação HTML padrão se quiser, ou remova */}
+                    <input 
+                      type="hidden" 
+                      required 
+                      value={formData.location_address} 
+                    />
+
+                    {/* Preview do Mapa (O "Uau" da banca) */}
+                    {mapUrl && (
+                      <div className="mt-2 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                          <img src={mapUrl} alt="Localização da turma" className="w-full h-48 object-cover" />
+                      </div>
+                    )}
                   </div>
 
                   {/* Schedule */}

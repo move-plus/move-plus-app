@@ -66,17 +66,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!user) {
       return <Navigate to="/login" state={{ from: location }} replace />;
     }
-    if (!role) {
-      return <Navigate to="/onboarding" replace />;
-    }
-  }
-
-  else if (isProtectedRoute) {
-    if (!user) return <Navigate to="/login" replace />;
-    if (role) {
-      if (role === "student") return <Navigate to="/minhas-turmas" replace />;
-      if (role === "professional") return <Navigate to="/dashboard" replace />;
-    }
   }
 
   else if (isGuestOnlyRoute) {
@@ -90,12 +79,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         </div>
       );
     }
-  }
-
-  if (user && !role && !isProtectedRoute) {
-    console.log('User trying acessing: ', location.pathname);
-    console.log('Redirecting to onboarding because user has no role.');
-    return <Navigate to="/onboarding" state={location.state || { from: location }} replace />;
   }
 
   return <>{children}</>;

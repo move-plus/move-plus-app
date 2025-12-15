@@ -21,30 +21,38 @@ import {
   MessageCircle,
 } from "lucide-react";
 
+// Defina sua chave aqui para facilitar (o ideal seria .env, mas para o TCC ok)
+const GOOGLE_API_KEY = "AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU";
+
 const ClassDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const location = useLocation();
+
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
+  
   const [classData, setClassData] = useState<any>(null);
   const [professional, setProfessional] = useState<any>(null);
+  
   const [enrollmentCount, setEnrollmentCount] = useState(0);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  
   const [forumMessages, setForumMessages] = useState<any[]>([]);
   const [classmates, setClassmates] = useState<any[]>([]);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(
-    null
-  );
+  
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
+  
   const [distanceInfo, setDistanceInfo] = useState<{
     distanceText: string;
     durationText: string;
   } | null>(null);
+  
   const [locationStatus, setLocationStatus] = useState(
-    "Ative a localizacao para estimar a distancia ate a aula."
+    "Ative a localização para ver a distância."
   );
-  const location = useLocation();
 
   useEffect(() => {
     fetchClassDetails();
@@ -59,85 +67,92 @@ const ClassDetails = () => {
     }
   }, [isEnrolled]);
 
+  // 1. CONFIGURAÇÃO DO MAPA E GEOLOCALIZAÇÃO DO USUÁRIO
   useEffect(() => {
-    if (!classData?.location_address) return;
+    if (!classData) return;
 
-    const apiKey = 'AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU';
-    const destination = encodeURIComponent(classData.location_address);
+    // Se tivermos lat/lng salvos no banco (novo método), usamos eles.
+    // Se for antigo, usamos o endereço em texto.
+    const destinationQuery = (classData.lat && classData.lng)
+      ? `${classData.lat},${classData.lng}`
+      : encodeURIComponent(classData.location_address);
 
-    if (!apiKey) {
-      setLocationStatus("Não foi possível carregar a chave do Google Maps.");
-      return;
-    }
-
-    setDistanceInfo(null);
-    setUserLocation(null);
-    setLocationStatus("Solicitando sua localizacao para tracar a rota...");
-
-    // Mostra somente o destino enquanto ainda nao temos origem
-    setMapUrl(`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${destination}`);
+    // URL Oficial do Google Static Maps
+    const initialMap = `https://maps.googleapis.com/maps/api/staticmap?center=${destinationQuery}&zoom=15&size=600x300&markers=color:red|${destinationQuery}&key=${GOOGLE_API_KEY}`;
+    setMapUrl(initialMap);
 
     if (!navigator.geolocation) {
-      setLocationStatus("Seu navegador nao permite localizacao automatica.");
+      setLocationStatus("Seu navegador não suporta geolocalização.");
       return;
     }
 
-    setLocationStatus("Solicitando sua localizacao...");
+    setLocationStatus("Solicitando sua localização...");
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const coords = {
+        const userCoords = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         };
-        setUserLocation(coords);
-        setLocationStatus("Calculando distancia...");
+        setUserLocation(userCoords);
+        setLocationStatus("Calculando rota...");
 
-        setMapUrl(
-          `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${coords.lat},${coords.lng}&destination=${destination}&mode=walking`
-        );
+        // Atualiza o mapa para mostrar DOIS pontos (Origem do usuário e Destino da aula)
+        // &markers=color:blue|label:VC|... (Você)
+        // &markers=color:red|... (Aula)
+        const routeMap = `https://maps.googleapis.com/maps/api/staticmap?size=600x300&markers=color:blue|label:U|${userCoords.lat},${userCoords.lng}&markers=color:red|${destinationQuery}&path=color:0x0000ff|weight:5|${userCoords.lat},${userCoords.lng}|${destinationQuery}&key=${GOOGLE_API_KEY}`;
+        
+        setMapUrl(routeMap);
       },
-      () => {
-        setLocationStatus(
-          "Nao foi possivel obter sua localizacao. Mostrando apenas o local da aula."
-        );
-        // Mantem o mapa apenas com o destino
-        setMapUrl(`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${destination}`);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }, [classData?.location_address]);
-
-  useEffect(() => {
-    const fetchDistance = async () => {
-      if (!userLocation || !classData?.location_address) return;
-      const apiKey = 'AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU';
-      if (!apiKey) return;
-
-      try {
-        const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${userLocation.lat},${userLocation.lng}&destinations=${encodeURIComponent(
-          classData.location
-        )}&mode=walking&key=${apiKey}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        const element = data?.rows?.[0]?.elements?.[0];
-
-        if (element?.status === "OK") {
-          setDistanceInfo({
-            distanceText: element.distance?.text || "",
-            durationText: element.duration?.text || "",
-          });
-          setLocationStatus("");
-        } else {
-          setLocationStatus("Não foi possível calcular a distância agora.");
-        }
-      } catch (error) {
-        console.error("Erro ao calcular distância:", error);
-        setLocationStatus("Não foi possível calcular a distância agora.");
+      (error) => {
+        console.error("Erro de geolocalização:", error);
+        setLocationStatus("Não foi possível obter sua localização.");
       }
+    );
+  }, [classData]);
+
+  // 2. CÁLCULO DE DISTÂNCIA (Correção do Erro CORS)
+  useEffect(() => {
+    if (!userLocation || !classData) return;
+    if (!window.google || !window.google.maps) return;
+
+    const calculateDistanceNative = () => {
+      const service = new google.maps.DistanceMatrixService();
+
+      // Define o destino: Preferência por Objeto LatLng, fallback para string
+      const destination = (classData.lat && classData.lng)
+        ? { lat: classData.lat, lng: classData.lng }
+        : classData.location_address;
+
+      service.getDistanceMatrix(
+        {
+          origins: [{ lat: userLocation.lat, lng: userLocation.lng }],
+          destinations: [destination],
+          travelMode: google.maps.TravelMode.WALKING, // Pode mudar para DRIVING se quiser
+          unitSystem: google.maps.UnitSystem.METRIC,
+        },
+        (response, status) => {
+          if (status === "OK" && response) {
+            const element = response.rows[0].elements[0];
+            if (element.status === "OK") {
+              setDistanceInfo({
+                distanceText: element.distance.text,
+                durationText: element.duration.text,
+              });
+              setLocationStatus("");
+            } else {
+              setLocationStatus("Rota não encontrada (muito longe ou oceano).");
+            }
+          } else {
+            console.error("Erro DistanceMatrix:", status);
+            setLocationStatus("Erro ao calcular distância.");
+          }
+        }
+      );
     };
 
-    fetchDistance();
-  }, [userLocation, classData?.location_address]);
+    calculateDistanceNative();
+  }, [userLocation, classData]);
 
   const fetchClassDetails = async () => {
     try {
@@ -184,7 +199,7 @@ const ClassDetails = () => {
       const { data: enrollments, error: enrollError } = await supabase
         .from("enrollments")
         .select("id, user_id")
-        .eq("class_id", id)
+        .eq("class_id", id);
 
       if (enrollError) throw enrollError;
 
@@ -202,11 +217,8 @@ const ClassDetails = () => {
 
       if (studentsError) throw studentsError;
 
-      const classmates = enrollments.map((enrollment) => {
-        const student = students?.find(
-          (s) => s.id === enrollment.user_id
-        );
-
+      const classmatesData = enrollments.map((enrollment) => {
+        const student = students?.find((s) => s.id === enrollment.user_id);
         return {
           enrollment_id: enrollment.id,
           student_id: enrollment.user_id,
@@ -214,20 +226,19 @@ const ClassDetails = () => {
           email: student?.email,
           phone: student?.phone,
           gender: student?.gender,
-          avatar_url: "" // student?.avatar_url,
+          avatar_url: "",
         };
       });
 
-      setClassmates(classmates);
+      setClassmates(classmatesData);
     } catch (error: any) {
       console.error("Error fetching classmates:", error);
     }
   };
+
   const checkEnrollment = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -248,12 +259,7 @@ const ClassDetails = () => {
     try {
       const { data, error } = await supabase
         .from("forum_messages")
-        .select(
-          `
-          *,
-          profiles:user_id (full_name)
-        `
-        )
+        .select(`*, profiles:user_id (full_name)`)
         .eq("class_id", id)
         .order("created_at", { ascending: false });
 
@@ -306,9 +312,7 @@ const ClassDetails = () => {
 
     setEnrolling(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate("/login", { state: { from: location } });
         return;
@@ -348,10 +352,8 @@ const ClassDetails = () => {
   }
 
   const availableSpots = classData.capacity - enrollmentCount;
-  const originParam = userLocation ? `${userLocation.lat},${userLocation.lng}` : "";
-  const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    classData.location_address
-  )}&travelmode=walking${originParam ? `&origin=${originParam}` : ""}`;
+  // Link para abrir no App do Google Maps (botão externo)
+  const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(classData.location_address)}${userLocation ? `&origin=${userLocation.lat},${userLocation.lng}` : ""}&travelmode=walking`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background py-12 px-4">
@@ -390,7 +392,7 @@ const ClassDetails = () => {
                 <Users className="h-5 w-5 text-muted-foreground" />
                 <span className="font-medium">Vagas:</span>
                 <span>
-                  {enrollmentCount}/{classData.max_students}
+                  {enrollmentCount}/{classData.capacity || classData.max_students}
                   {availableSpots > 0
                     ? ` (${availableSpots} disponíveis)`
                     : " (Turma cheia)"}
@@ -438,26 +440,25 @@ const ClassDetails = () => {
                   <h3 className="text-lg font-semibold">Distância até a aula</h3>
                 </div>
                 {distanceInfo && (
-                  <Badge variant="secondary">
-                    {distanceInfo.distanceText} • {distanceInfo.durationText}
+                  <Badge variant="secondary" className="text-sm px-3 py-1">
+                     🚶 {distanceInfo.distanceText} • {distanceInfo.durationText}
                   </Badge>
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-              {distanceInfo
-                ? `Você está a ${distanceInfo.distanceText} (aprox. ${distanceInfo.durationText}) do local informado.`
-                : locationStatus}
+                {distanceInfo
+                  ? `Você está a ${distanceInfo.distanceText} do local.`
+                  : locationStatus}
               </p>
+              
+              {/* COMPONENTE DE MAPA CORRIGIDO */}
               {mapUrl ? (
                 <>
-                  <div className="aspect-video w-full overflow-hidden rounded-lg border shadow-sm">
-                    <iframe
-                      title="Mapa até a aula"
+                  <div className="aspect-video w-full overflow-hidden rounded-lg border shadow-sm bg-gray-100">
+                    <img
                       src={mapUrl}
-                      className="h-full w-full"
-                      loading="lazy"
-                      allowFullScreen
-                      referrerPolicy="no-referrer-when-downgrade"
+                      alt="Mapa até a aula"
+                      className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="flex justify-end">
@@ -469,8 +470,8 @@ const ClassDetails = () => {
                   </div>
                 </>
               ) : (
-                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                  Configure a chave do Google Maps para visualizar o mapa.
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground text-center">
+                  Carregando mapa...
                 </div>
               )}
             </div>
@@ -513,15 +514,13 @@ const ClassDetails = () => {
                       </p>
                     ) : (
                       classmates.map((mate: any) => (
-                        <Card key={mate.id + mate.full_name}>
+                        <Card key={mate.enrollment_id}>
                           <CardContent className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              <img
-                                className="h-7 w-7 text-muted-foreground rounded-full"
-                                src={mate.avatar_url}
-                                alt={`photo-of-${mate.name}`}
-                              />
-                               {/* <User className="h-7 w-7 text-muted-foreground" /> */}
+                              {/* Avatar placeholder se não tiver URL */}
+                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                 <User className="h-5 w-5 text-gray-500" />
+                              </div>
                               <span className="font-medium">
                                 {mate.full_name || "Aluno"}
                               </span>

@@ -265,9 +265,8 @@ export default function Profile() {
     } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
     // Update database
-    const table = profileData?.role === "student" ? "students" : "professionals";
     const { error: updateError } = await supabase
-      .from(table)
+      .from("profiles")
       .update({ avatar_url: publicUrl })
       .eq("id", session.user.id);
 
@@ -445,7 +444,7 @@ export default function Profile() {
                 </Label>
                 <Input
                   id="phone"
-                  value={profileData.phone}
+                  value={profileData.phone || ""}
                   onChange={(e) =>
                     setProfileData({ ...profileData , phone: e.target.value })
                   }
@@ -460,7 +459,7 @@ export default function Profile() {
                 <Input
                   id="email"
                   type="email"
-                  value={profileData.email}
+                  value={profileData.email || ""}
                   onChange={(e) =>
                     setProfileData({ ...profileData, email: e.target.value })
                   }
@@ -475,7 +474,7 @@ export default function Profile() {
                 <Input
                   id="cpf"
                   type="text"
-                  value={profileData.cpf}
+                  value={profileData.cpf || ""}
                   onChange={(e) =>
                     setProfileData({ ...profileData, cpf: e.target.value })
                   }
@@ -489,7 +488,7 @@ export default function Profile() {
                 </Label>
                 <Input
                   id="address"
-                  value={profileData.address}
+                  value={profileData.address || ""}
                   onChange={(e) =>
                     setProfileData({
                       ...profileData,
@@ -510,7 +509,7 @@ export default function Profile() {
                 <Input
                   id="birth_date"
                   type="date"
-                  value={profileData.birth_date}
+                  value={profileData.birth_date || ""}
                   onChange={(e: { target: { value: any; }; }) =>
                     setProfileData({
                       ...profileData,
@@ -528,7 +527,7 @@ export default function Profile() {
                   </Label>
                   <Input
                     id="cref"
-                    value={professionalData.cref}
+                    value={professionalData.cref || ""}
                     disabled
                     className="bg-muted" />
                 </div><div className="space-y-2">
@@ -541,24 +540,11 @@ export default function Profile() {
                     </Label>
                     <Input
                       id="specialty"
-                      value={professionalData.specialty}
+                      value={professionalData.specialty || ""}
                       onChange={(e) => setProfessionalData({
                         ...professionalData,
                         specialty: e.target.value,
                       })} />
-                  </div><div className="space-y-2">
-                    <Label
-                      htmlFor="verification_status"
-                      className="flex items-center gap-2"
-                    >
-                      <Award className="h-4 w-4" />
-                      Status de Verificação
-                    </Label>
-                    <Input
-                      id="verification_status"
-                      value={professionalData.verification_status}
-                      disabled
-                      className="bg-muted" />
                   </div></>
               )}
               {/* Dados do aluno */}
@@ -614,7 +600,7 @@ export default function Profile() {
                     </Label>
                     {studentData.health_certificate_url ? (
                       <a
-                        href={studentData.health_certificate_url}
+                        href={studentData.health_certificate_url || ""}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary underline"

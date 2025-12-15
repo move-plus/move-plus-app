@@ -34,7 +34,7 @@ const CTA = () => {
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Link to="/cadastrar-aulas">
+            <Link to="/criar-turma">
               <Button 
                 size="lg" 
                 className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-primary-foreground border-2 border-white/50 text-lg w-full sm:w-auto"
