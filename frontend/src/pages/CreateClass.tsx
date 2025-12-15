@@ -30,21 +30,26 @@ const CreateClass = () => {
   const [loading, setLoading] = useState(false);
   const [professionalId, setProfessionalId] = useState<string | null>(null);
 
+  // 1. Recebendo os dados extras do Dashboard
   const demandData = location.state as {
     demandId?: string;
     activity?: string;
     schedule?: string;
     location?: string;
+    description?: string; // Novo: observacoes vem aqui
+    level?: string;       // Novo: nivel vem aqui
   } | null;
 
+  // 2. Preenchendo o formulário com os dados recebidos
   const [formData, setFormData] = useState({
-    title: demandData?.activity || "", // Preenche Título
+    title: demandData?.activity || "",
     category: "",
-    schedule: demandData?.schedule || "", // <--- CORREÇÃO: Preenche Horário
-    location_address: demandData?.location || "", // Preenche Endereço
+    description: demandData?.description || "", // Atualiza a descrição
+    schedule: demandData?.schedule || "",
+    location_address: demandData?.location || "",
     capacity: "",
     price: "",
-    level: "",
+    level: demandData?.level || "",             // Atualiza o nível
   });
 
   useEffect(() => {
@@ -94,7 +99,7 @@ const CreateClass = () => {
       const { error } = await supabase.from("classes").insert({
         professional_id: professionalId,
         title: formData.title,
-        //description: formData.description,
+        description: formData.description, // Agora envia a descrição corretamente
         category: formData.category,
         schedule: formData.schedule,
         capacity: parseInt(formData.capacity) || 10,
@@ -107,14 +112,12 @@ const CreateClass = () => {
 
       if (demandData?.demandId) {
         const { error: updateError } = await supabase
-          .from("Demandas" as any) // "as any" para evitar erro de tipagem se a tabela for nova
+          .from("Demandas" as any) 
           .update({ atendida: true })
           .eq("id", demandData.demandId);
 
       if (updateError) {
           console.error("Erro ao atualizar status da demanda:", updateError);
-          // Opcional: Avisar o usuário que a demanda não foi fechada, 
-          // mas geralmente deixamos passar pois a turma foi criada com sucesso.
         }}
 
       toast({

@@ -79,13 +79,12 @@ const CreateDemand = () => {
     setLoading(true);
     try {
       const { error } = await supabase.from("Demandas").insert({
-        student_id: studentId,
         tipo: formData.tipo,
         localizacao: formData.localizacao,
         horario: formData.horario,
-        descricao: formData.descricao,
+        observacoes: formData.descricao,
         nivel: formData.nivel,
-        atendida: false,
+        atendida: false
       });
 
       if (error) throw error;

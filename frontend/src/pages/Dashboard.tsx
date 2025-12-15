@@ -2,13 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -20,17 +13,20 @@ import {
   BookOpen,
   Calendar,
   Wallet,
+  GraduationCap, // Importado novo ícone
+  FileText       // Importado novo ícone
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Tables } from "@/integrations/supabase/types";
 
+// 1. Interface atualizada com os campos do banco
 interface Demand {
   id: string;
-  tipo: string; // ou 'activity' dependendo do seu banco
-  activity: string;
+  tipo: string; 
   localizacao: string;
   horario: string;
   created_at: string;
+  nivel: string;       // Novo campo
+  observacoes: string; // Novo campo
 }
 
 const Dashboard = () => {
@@ -39,7 +35,7 @@ const Dashboard = () => {
   const [professional, setProfessional] = useState<any>(null);
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [demands, setDemands] = useState<any[]>([]);
+  const [demands, setDemands] = useState<Demand[]>([]); // Tipagem corrigida
   const [demandsCount, setDemandsCount] = useState(0);
 
   useEffect(() => {
@@ -61,7 +57,6 @@ const Dashboard = () => {
         .eq("id", user?.id)
         .single();
 
-
       setProfessional({ id: professional_data.id, full_name: professional_data.full_name });
       await loadData(professional_data.id);
     };
@@ -81,16 +76,17 @@ const Dashboard = () => {
       .eq("professional_id", professionalId)
       .order('created_at', { ascending: false });
 
+    // O select(*) já traz nivel e observacoes se existirem no banco
     const { data: demandsData } = await supabase
-      .from("Demandas") 
+      .from("Demandas" as any) 
       .select("*")
-      .eq('atendida', false) // Opcional: descomente se quiser apenas demandas abertas
+      .eq('atendida', false)
       .order('created_at', { ascending: false });
 
     setClasses(classesData || []);
     setDemands(demandsData || []);
 
-    setDemandsCount(demandsData.length);
+    setDemandsCount(demandsData?.length || 0);
     setLoading(false);
   };
 
@@ -99,14 +95,16 @@ const Dashboard = () => {
     navigate("/");
   };
 
+  // 2. Função atualizada para passar Nível e Observações
   const createClassFromDemand = (demand: Demand) => {
     navigate("/criar-turma", {
       state: {
         demandId: demand.id,
-        // Mapeando os campos do banco (Português) para o Form (Inglês)
         activity: demand.tipo, 
         schedule: demand.horario, 
         location: demand.localizacao,
+        level: demand.nivel,              // Passando o nível
+        description: demand.observacoes   // Mapeando observações para descrição
       },
     });
   };
@@ -118,11 +116,15 @@ const Dashboard = () => {
     }).format(value);
   };
 
-  // Calcula receita total: (Preço da Turma * Num Alunos) somado para todas as turmas
   const totalRevenue = classes.reduce((total, cls) => {
     const count = cls.enrollments?.[0]?.count || 0;
     const price = cls.price || 0;
     return total + (count * price);
+  }, 0);
+
+  const totalStudents = classes.reduce((total, cls) => {
+    const count = cls.enrollments?.[0]?.count || 0;
+    return total + count;
   }, 0);
 
   if (loading) {
@@ -133,11 +135,6 @@ const Dashboard = () => {
     );
   }
 
-  const totalStudents = classes.reduce((total, cls) => {
-    const count = cls.enrollments?.[0]?.count || 0;
-    return total + count;
-  }, 0);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white pb-24">
       <PageHeader title="Dashboard" showBackButton={false} />
@@ -146,6 +143,7 @@ const Dashboard = () => {
           Olá, {professional?.full_name}!
         </p>
 
+        {/* Cards de Resumo */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-br from-[#5F94E2] to-[#2D7DD2] rounded-xl shadow-sm p-6">
             <div className="flex flex-row items-center justify-between mb-4">
@@ -199,20 +197,20 @@ const Dashboard = () => {
           <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-lg h-auto">
             <TabsTrigger 
               value="classes" 
-              className="text-xs sm:text-sm md:text-base py-2 px-2 data-[state=active]:bg-white data-[state=active]:text-[#5F94E2] data-[state=active]:shadow-sm transition-all hover:bg-white/50"
+              className="py-2 px-2 data-[state=active]:bg-white data-[state=active]:text-[#5F94E2] data-[state=active]:shadow-sm transition-all"
             >
               <span className="hidden sm:inline">Minhas Turmas</span>
               <span className="sm:hidden">Turmas</span>
             </TabsTrigger>
             <TabsTrigger 
               value="demands" 
-              className="text-xs sm:text-sm md:text-base py-2 px-2 data-[state=active]:bg-white data-[state=active]:text-[#5F94E2] data-[state=active]:shadow-sm transition-all hover:bg-white/50"
+              className="py-2 px-2 data-[state=active]:bg-white data-[state=active]:text-[#5F94E2] data-[state=active]:shadow-sm transition-all"
             >
               Demandas
             </TabsTrigger>
             <TabsTrigger 
               value="financial" 
-              className="text-xs sm:text-sm md:text-base py-2 px-2 data-[state=active]:bg-white data-[state=active]:text-[#5F94E2] data-[state=active]:shadow-sm transition-all hover:bg-white/50"
+              className="py-2 px-2 data-[state=active]:bg-white data-[state=active]:text-[#5F94E2] data-[state=active]:shadow-sm transition-all"
             >
               Financeiro
             </TabsTrigger>
@@ -270,6 +268,7 @@ const Dashboard = () => {
             )}
           </TabsContent>
 
+          {/* 3. Conteúdo da aba Demandas atualizado */}
           <TabsContent value="demands" className="space-y-4">
             {demands.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border p-8 text-center">
@@ -291,18 +290,23 @@ const Dashboard = () => {
                   >
                     <div className="space-y-3 mb-4">
                       <div>
-                        {/* Assumindo que a demanda tem um 'title' ou 'activity' como título */}
                         <h3 className="text-lg font-semibold text-[#1756AC]">
                           {demand.tipo || "Nova Demanda"}
                         </h3>
-                        {demand.description && (
-                            <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                                {demand.description}
-                            </p>
+                        {/* Exibe Observações se houver */}
+                        {demand.observacoes && (
+                            <div className="mt-2 bg-slate-50 p-2 rounded-md border border-slate-100">
+                                <div className="flex items-start gap-2">
+                                    <FileText className="h-3 w-3 text-gray-400 mt-1 shrink-0" />
+                                    <p className="text-sm text-gray-600 line-clamp-3 italic">
+                                        "{demand.observacoes}"
+                                    </p>
+                                </div>
+                            </div>
                         )}
                       </div>
                       
-                      <div className="flex flex-col space-y-2">
+                      <div className="flex flex-col space-y-2 pt-2">
                         <div className="flex items-center space-x-2">
                           <MapPin className="h-4 w-4 text-gray-600 shrink-0" />
                           <span className="text-sm text-gray-600 truncate">{demand.localizacao || "Local a definir"}</span>
@@ -311,7 +315,14 @@ const Dashboard = () => {
                           <Clock className="h-4 w-4 text-gray-600 shrink-0" />
                           <span className="text-sm text-gray-600">{demand.horario || "Horário a combinar"}</span>
                         </div>
-                         {/* Se tiver data de criação */}
+                        {/* Exibe o Nível */}
+                        <div className="flex items-center space-x-2">
+                          <GraduationCap className="h-4 w-4 text-gray-600 shrink-0" />
+                          <span className="text-sm text-gray-600">
+                             {demand.nivel || "Nível não especificado"}
+                          </span>
+                        </div>
+                        
                         <div className="flex items-center space-x-2">
                           <Calendar className="h-4 w-4 text-gray-600 shrink-0" />
                           <span className="text-sm text-gray-600">
@@ -334,6 +345,7 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="financial" className="space-y-4">
+             {/* Conteúdo financeiro inalterado (mantido para brevidade) */}
             {classes.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border p-8 text-center">
                 <p className="text-gray-600">Cadastre turmas para visualizar seus rendimentos.</p>

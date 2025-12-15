@@ -118,6 +118,8 @@ export type Database = {
           localizacao: string;
           atendida: boolean;
           horario: string;
+          nivel: string;
+          observacoes: string;
         };
         Insert: {
           tipo: string;
@@ -126,6 +128,8 @@ export type Database = {
           localizacao: string;
           atendida: boolean;
           horario: string;
+          nivel: string;
+          observacoes: string;
         };
         Update: {
           tipo: string;
@@ -134,6 +138,8 @@ export type Database = {
           localizacao: string;
           atendida: boolean;
           horario: string;
+          nivel: string;
+          observacoes: string;
         };
         Relationships: [];
       };

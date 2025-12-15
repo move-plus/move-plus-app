@@ -33,6 +33,25 @@ const SearchClasses = () => {
 
   const fetchClasses = async () => {
     try {
+      setLoading(true);
+
+      // 1. Verificar usuário logado
+      const { data: { user } } = await supabase.auth.getUser();
+      let enrolledClassIds: string[] = [];
+
+      // 2. Se houver usuário, buscar os IDs das turmas que ele já está matriculado
+      if (user) {
+        const { data: myEnrollments } = await supabase
+          .from("enrollments")
+          .select("class_id")
+          .eq("user_id", user.id); // Certifique-se que a coluna é user_id ou student_id
+
+        if (myEnrollments) {
+          enrolledClassIds = myEnrollments.map((e: any) => e.class_id);
+        }
+      }
+
+      // 3. Buscar todas as aulas
       const { data, error } = await supabase
         .from("classes")
         .select(`
@@ -48,15 +67,20 @@ const SearchClasses = () => {
 
       if (error) throw error;
 
-      const classesFormatted = data.map((cls) => {
-        const enrolledCount = cls.enrollments[0]?.count || 0
-        
-        return {
-          ...cls,
-          enrolled_count: enrolledCount,
-          spots_left: cls.capacity - enrolledCount 
-        }
-      })
+      // 4. Filtrar (remover aulas que o aluno já tem) e Formatar
+      const classesFormatted = data
+        .filter((cls) => !enrolledClassIds.includes(cls.id)) // <--- AQUI ESTÁ O FILTRO
+        .map((cls) => {
+          // O count retorna um array de objetos, pegamos o count do primeiro ou 0
+          // Nota: Supabase count no select retorna algo como [{count: 5}]
+          const enrolledCount = cls.enrollments[0]?.count || 0;
+          
+          return {
+            ...cls,
+            enrolled_count: enrolledCount,
+            spots_left: cls.capacity - enrolledCount 
+          };
+        });
 
       setClasses(classesFormatted);
     } catch (error) {
@@ -163,7 +187,7 @@ const SearchClasses = () => {
             <Card
               onClick={() => navigate(`/turma-aluno/${classItem.id}`)}
               key={classItem.id}
-              className="overflow-hidden hover:shadow-medium transition-all group"
+              className="overflow-hidden hover:shadow-medium transition-all group cursor-pointer"
             >
               <CardHeader>
                 <div className="space-y-2">
@@ -192,7 +216,7 @@ const SearchClasses = () => {
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>
+                  <span className={classItem.spots_left <= 0 ? "text-red-500 font-medium" : ""}>
                     {classItem.spots_left > 0
                       ? `${classItem.spots_left} vagas disponíveis`
                       : "Turma cheia"}
@@ -207,7 +231,10 @@ const SearchClasses = () => {
                     : "Gratuito"}
                 </div>
                 <Button
-                  onClick={() => navigate(`/turma-aluno/${classItem.id}`)}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Evita clicar no card ao clicar no botão
+                    navigate(`/turma-aluno/${classItem.id}`);
+                  }}
                   disabled={classItem.spots_left <= 0}
                 >
                   {classItem.spots_left > 0 ? "Matricular" : "Cheia"}
@@ -220,7 +247,7 @@ const SearchClasses = () => {
         {filteredClasses.length === 0 && (
           <Card className="p-12 text-center">
             <p className="text-xl text-muted-foreground">
-              Nenhuma aula encontrada com os filtros selecionados.
+              Nenhuma aula encontrada com os filtros selecionados (ou você já está matriculado em todas).
             </p>
             <Button
               variant="outline"
