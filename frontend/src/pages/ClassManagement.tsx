@@ -41,6 +41,7 @@ interface Student {
   absences: number;
   total_classes: number;
   attendance_rate: number;
+  payment_status: string;
 }
 
 interface FrequencyData {
@@ -68,13 +69,14 @@ const ClassManagement = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
   const [classData, setClassData] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
-  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
+  
   const [selectedDate, setSelectedDate] = useState(
     format(new Date(), "yyyy-MM-dd")
   );
@@ -84,7 +86,12 @@ const ClassManagement = () => {
     loadClassData();
     loadStudents();
     loadFrequencyData();
-  }, [id, frequencyData]);
+  }, [id]);
+
+  useEffect(() => {
+    if (frequencyData.length > 0) {
+    }
+  }, [frequencyData]);
 
   const loadClassData = async () => {
     const { data } = await supabase
@@ -101,7 +108,7 @@ const ClassManagement = () => {
     try {
       const { data: enrollments, error: enrollError } = await supabase
         .from("enrollments")
-        .select("id, user_id")
+        .select("id, user_id, status") 
         .eq("class_id", id);
 
       if (enrollError) throw enrollError;
@@ -113,30 +120,33 @@ const ClassManagement = () => {
 
       const studentIds = enrollments.map((e) => e.user_id);
 
-      let studentsInfo = null;
-        const { data: studentsData, error: studentsError } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", studentIds);
+      const { data: studentsData, error: studentsError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", studentIds);
 
-        studentsInfo = studentsData;
       if (studentsError) throw studentsError;
       
-      const studentsWithAbsences = await Promise.all(
+      const studentsList = await Promise.all(
         enrollments.map(async (enrollment) => {
-          const profile = studentsInfo?.find(
+          const profile = studentsData?.find(
             (s: any) => s.id === enrollment.user_id
           );
           const fullName = profile ? profile.full_name : "Sem nome";
+          
           return {
             id: enrollment.user_id,
             enrollment_id: enrollment.id,
             full_name: fullName,
+            absences: 0,
+            total_classes: 0,
+            attendance_rate: 0,
+            payment_status: enrollment.status || 'payment_pending'
           };
         })
       );
 
-      setStudents(studentsWithAbsences);
+      setStudents(studentsList);
     } catch (error) {
       console.error("Error loading students:", error);
     }
@@ -171,7 +181,6 @@ const ClassManagement = () => {
 
   const loadFrequencyData = async () => {
     try {
-      // Buscar todos os registros de frequência
       const { data: frequencyRecords, error: freqError } = await supabase
         .from("frequency")
         .select(`
@@ -187,25 +196,16 @@ const ClassManagement = () => {
         return;
       }
 
-      // Buscar todos os alunos matriculados
-      const { data: enrollments, error: enrollError } = await supabase
+      const { data: enrollments } = await supabase
         .from("enrollments")
         .select("user_id")
         .eq("class_id", id);
 
-      if (enrollError) {
-        console.error("Error loading enrollments:", enrollError);
-        return;
-      }
-
-      // Buscar todas as datas únicas de aula (frequência registrada)
       const uniqueDates = new Set(frequencyRecords?.map(f => f.date) || []);
       const totalClasses = uniqueDates.size;
 
-      // Agrupar por aluno e calcular estatísticas
       const studentMap = new Map<string, FrequencyData>();
 
-      // Inicializar todos os alunos matriculados
       enrollments?.forEach(enrollment => {
         const userId = enrollment.user_id;
         if (!studentMap.has(userId)) {
@@ -222,7 +222,6 @@ const ClassManagement = () => {
         }
       });
 
-      // Processar presenças
       frequencyRecords?.forEach(record => {
         const userId = record.user_id;
         const existing = studentMap.get(userId);
@@ -241,7 +240,6 @@ const ClassManagement = () => {
         }
       });
 
-      // Calcular presenças por aluno
       const presenceCount = new Map<string, number>();
       frequencyRecords?.forEach(record => {
         presenceCount.set(
@@ -250,7 +248,6 @@ const ClassManagement = () => {
         );
       });
 
-      // Atualizar ausências e taxa de frequência
       studentMap.forEach((student, userId) => {
         const presences = presenceCount.get(userId) || 0;
         student.absences = totalClasses - presences;
@@ -267,7 +264,6 @@ const ClassManagement = () => {
   };
 
   const handleAttendanceSubmit = async () => {
-
     const attendanceRecords = Object.entries(attendance)
     .filter(([_, isPresent]) => isPresent === true)
     .map(([userId]) => ({
@@ -275,8 +271,6 @@ const ClassManagement = () => {
       date: selectedDate,
       class_id: classData.id,
     }))
-
-    console.log("Frequency:", attendance)
     
     const { error } = await supabase
       .from("frequency")
@@ -296,37 +290,35 @@ const ClassManagement = () => {
           "dd/MM/yyyy"
         )} atualizada.`,
       });
-      loadStudents();
+      loadFrequencyData();
     }
-
-    console.log("Attendance submitted:", attendanceRecords);
   };
 
-  // const handleSendMessage = async () => {
-  //   if (!newMessage.trim()) return;
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
 
-  //   const {
-  //     data: { user },
-  //   } = await supabase.auth.getUser();
-  //   if (!user) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-  //   const { error } = await supabase.from("forum_messages").insert({
-  //     class_id: id,
-  //     user_id: user.id,
-  //     message: newMessage,
-  //   });
+    const { error } = await supabase.from("forum_messages").insert({
+      class_id: id,
+      user_id: user.id,
+      message: newMessage,
+    });
 
-  //   if (error) {
-  //     toast({
-  //       title: "Erro ao enviar mensagem",
-  //       description: error.message,
-  //       variant: "destructive",
-  //     });
-  //   } else {
-  //     setNewMessage("");
-  //     loadMessages();
-  //   }
-  // };
+    if (error) {
+      toast({
+        title: "Erro ao enviar mensagem",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setNewMessage("");
+      loadMessages();
+    }
+  };
 
   if (loading) {
     return (
@@ -365,7 +357,7 @@ const ClassManagement = () => {
               <BarChart3 className="w-4 h-4 mr-2" />
               Frequência
             </TabsTrigger>
-            <TabsTrigger value="forum">
+            <TabsTrigger value="forum" onClick={loadMessages}>
               <MessageSquare className="w-4 h-4 mr-2" />
               Fórum
             </TabsTrigger>
@@ -394,6 +386,7 @@ const ClassManagement = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Aluno</TableHead>
+                      <TableHead className="text-center">Financeiro</TableHead>
                       <TableHead className="text-center">Presente</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -403,6 +396,16 @@ const ClassManagement = () => {
                         <TableCell className="font-medium">
                           {student.full_name}
                         </TableCell>
+                        
+                        <TableCell className="text-center">
+                           <Badge 
+                             variant={student.payment_status === 'active' ? 'outline' : 'destructive'} 
+                             className={student.payment_status === 'active' ? "border-green-600 text-green-700 bg-green-50" : ""}
+                           >
+                             {student.payment_status === 'active' ? 'Em dia' : 'Pendente'}
+                           </Badge>
+                        </TableCell>
+
                         <TableCell className="text-center">
                           <Checkbox
                             checked={attendance[student.id] || false}
@@ -511,17 +514,19 @@ const ClassManagement = () => {
             </Card>
           </TabsContent>
 
-          {/* <TabsContent value="forum" className="space-y-6">
+          <TabsContent value="forum" className="space-y-6">
             <Card className="shadow-soft">
               <CardHeader>
                 <CardTitle>Enviar Mensagem</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Textarea
-                  placeholder="Digite sua mensagem..."
+                <Input
+                  placeholder="Digite sua mensagem para a turma..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  rows={3}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSendMessage();
+                  }}
                 />
                 <Button onClick={handleSendMessage} className="w-full">
                   <Send className="w-4 h-4 mr-2" />
@@ -531,27 +536,31 @@ const ClassManagement = () => {
             </Card>
 
             <div className="space-y-4">
-              {messages.map((msg) => (
-                <Card key={msg.id} className="shadow-soft">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-base">
-                        {msg.profiles?.full_name || "Usuário"}
-                      </CardTitle>
-                      <span className="text-sm text-muted-foreground">
-                        {format(new Date(msg.created_at), "dd/MM/yyyy HH:mm", {
-                          locale: ptBR,
-                        })}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm">{msg.message}</p>
-                  </CardContent>
-                </Card>
-              ))}
+              {messages.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">Nenhuma mensagem no fórum.</p>
+              ) : (
+                  messages.map((msg) => (
+                    <Card key={msg.id} className="shadow-soft">
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-base">
+                            {msg.profiles?.full_name || "Usuário"}
+                          </CardTitle>
+                          <span className="text-sm text-muted-foreground">
+                            {format(new Date(msg.created_at), "dd/MM/yyyy HH:mm", {
+                              locale: ptBR,
+                            })}
+                          </span>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm">{msg.message}</p>
+                      </CardContent>
+                    </Card>
+                  ))
+              )}
             </div>
-          </TabsContent> */}
+          </TabsContent>
         </Tabs>
       </div>
     </div>

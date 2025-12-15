@@ -21,7 +21,15 @@ import {
   MessageCircle,
 } from "lucide-react";
 
-// Defina sua chave aqui para facilitar (o ideal seria .env, mas para o TCC ok)
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CheckCircle2, QrCode, Copy } from "lucide-react";
+
 const GOOGLE_API_KEY = "AIzaSyCJ6nXLmePF2_REnVVFtB_30KsltT8JnxU";
 
 const ClassDetails = () => {
@@ -54,6 +62,10 @@ const ClassDetails = () => {
     "Ative a localização para ver a distância."
   );
 
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<"pending" | "success">("pending");
+  const [enrollmentData, setEnrollmentData] = useState<any>(null);
+
   useEffect(() => {
     fetchClassDetails();
     checkEnrollment();
@@ -67,12 +79,9 @@ const ClassDetails = () => {
     }
   }, [isEnrolled]);
 
-  // 1. CONFIGURAÇÃO DO MAPA E GEOLOCALIZAÇÃO DO USUÁRIO
   useEffect(() => {
     if (!classData) return;
 
-    // Se tivermos lat/lng salvos no banco (novo método), usamos eles.
-    // Se for antigo, usamos o endereço em texto.
     const destinationQuery = (classData.lat && classData.lng)
       ? `${classData.lat},${classData.lng}`
       : encodeURIComponent(classData.location_address);
@@ -111,7 +120,6 @@ const ClassDetails = () => {
     );
   }, [classData]);
 
-  // 2. CÁLCULO DE DISTÂNCIA (Correção do Erro CORS)
   useEffect(() => {
     if (!userLocation || !classData) return;
     if (!window.google || !window.google.maps) return;
@@ -119,7 +127,6 @@ const ClassDetails = () => {
     const calculateDistanceNative = () => {
       const service = new google.maps.DistanceMatrixService();
 
-      // Define o destino: Preferência por Objeto LatLng, fallback para string
       const destination = (classData.lat && classData.lng)
         ? { lat: classData.lat, lng: classData.lng }
         : classData.location_address;
@@ -128,7 +135,7 @@ const ClassDetails = () => {
         {
           origins: [{ lat: userLocation.lat, lng: userLocation.lng }],
           destinations: [destination],
-          travelMode: google.maps.TravelMode.WALKING, // Pode mudar para DRIVING se quiser
+          travelMode: google.maps.TravelMode.DRIVING,
           unitSystem: google.maps.UnitSystem.METRIC,
         },
         (response, status) => {
@@ -249,7 +256,9 @@ const ClassDetails = () => {
         .maybeSingle();
 
       if (error) throw error;
+      
       setIsEnrolled(!!data);
+      setEnrollmentData(data);
     } catch (error: any) {
       console.error("Error checking enrollment:", error);
     }
@@ -292,24 +301,41 @@ const ClassDetails = () => {
     };
   };
 
-  const handleEnroll = async () => {
-    if (classData?.source === "mock") {
-      toast({
-        title: "Exemplo de turma",
-        description: "Este é um exemplo para visualizar o mapa e os detalhes.",
-      });
-      return;
-    }
+  const startEnrollment = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/login", { state: { from: location } });
+        return;
+      }
 
-    if (enrollmentCount >= classData.capacity) {
+      if (enrollmentCount >= classData.capacity) {
+          toast({ title: "Turma cheia", variant: "destructive" });
+          return;
+        }
+        
+        setPaymentStatus("pending");
+        setShowPayment(true);
+
+        setTimeout(() => {
+          setPaymentStatus("success");
+
+          setTimeout(() => {
+            confirmPaymentAndEnroll();
+          }, 1500);
+        }, 4000);
+    } catch (error: any) {
       toast({
-        title: "Turma cheia",
-        description: "Esta turma já atingiu o número máximo de alunos.",
+        title: "Erro ao matricular",
+        description: error.message,
         variant: "destructive",
       });
-      return;
+    } finally {
+      setEnrolling(false);
     }
+  };
 
+  const confirmPaymentAndEnroll = async () => {
     setEnrolling(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -318,26 +344,44 @@ const ClassDetails = () => {
         return;
       }
 
-      const { error } = await supabase.from("enrollments").insert({
-        class_id: id,
-        user_id: user.id,
-      });
+      const { error } = await supabase
+        .from("enrollments")
+        .upsert({
+          class_id: id,
+          user_id: user.id,
+          status: 'active',
+          last_payment_date: new Date().toISOString(),
+          next_payment_due: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        }, { onConflict: 'class_id, user_id' });
 
       if (error) throw error;
 
       toast({
-        title: "Matrícula realizada!",
-        description: "Você foi matriculado na turma com sucesso.",
+        title: "Pagamento Confirmado!",
+        description: "Sua matrícula está ativa.",
+        className: "bg-green-50 border-green-200"
       });
 
       setIsEnrolled(true);
-      setEnrollmentCount(enrollmentCount + 1);
+      setEnrollmentData({
+         status: 'active',
+         class_id: id,
+         user_id: user.id
+      });
+      
+      if (!isEnrolled) {
+        setEnrollmentCount(enrollmentCount + 1);
+      }
+      
+      setShowPayment(false);
+
     } catch (error: any) {
       toast({
-        title: "Erro ao matricular",
+        title: "Erro na matrícula",
         description: error.message,
         variant: "destructive",
       });
+      setShowPayment(false);
     } finally {
       setEnrolling(false);
     }
@@ -371,7 +415,11 @@ const ClassDetails = () => {
                   {classData.description || "Sem descrição disponível"}
                 </CardDescription>
               </div>
-              {isEnrolled && <Badge className="bg-primary">Matriculado</Badge>}
+              {isEnrolled && (
+                <Badge variant={enrollmentData?.status === 'active' ? "default" : "destructive"}>
+                  {enrollmentData?.status === 'active' ? "Matrícula Ativa" : "Pagamento Pendente"}
+                </Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -451,7 +499,6 @@ const ClassDetails = () => {
                   : locationStatus}
               </p>
               
-              {/* COMPONENTE DE MAPA CORRIGIDO */}
               {mapUrl ? (
                 <>
                   <div className="aspect-video w-full overflow-hidden rounded-lg border shadow-sm bg-gray-100">
@@ -480,7 +527,7 @@ const ClassDetails = () => {
               <>
                 <Separator />
                 <Button
-                  onClick={handleEnroll}
+                  onClick={startEnrollment}
                   disabled={enrolling || availableSpots <= 0}
                   className="w-full"
                   size="lg"
@@ -493,6 +540,28 @@ const ClassDetails = () => {
             {isEnrolled && (
               <>
                 <Separator />
+                {enrollmentData?.status === 'payment_pending' && (
+                  <div className="mt-6 mb-6">
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded-r">
+                      <div className="flex">
+                        <div className="ml-3">
+                          <p className="text-sm text-yellow-700 font-medium">
+                            Atenção: Sua mensalidade venceu ou está pendente.
+                          </p>
+                          <p className="text-xs text-yellow-600 mt-1">
+                            Realize o pagamento para regularizar seu acesso.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={startEnrollment} 
+                      className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
+                    >
+                      Pagar Mensalidade (R$ {classData.price?.toFixed(2)})
+                    </Button>
+                  </div>
+                )}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
@@ -573,6 +642,54 @@ const ClassDetails = () => {
           </CardContent>
         </Card>
       </div>
+      <Dialog open={showPayment} onOpenChange={setShowPayment}>
+        <DialogContent className="sm:max-w-md text-center">
+          <DialogHeader>
+            <DialogTitle>Pagamento via Pix</DialogTitle>
+            <DialogDescription>
+              Escaneie o QR Code para confirmar sua matrícula na turma.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center py-6 space-y-4">
+            
+            {paymentStatus === "pending" ? (
+              <div className="relative animate-pulse">
+                <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-300">
+                  <QrCode className="w-32 h-32 text-gray-800" />
+                </div>
+                <p className="text-sm text-muted-foreground mt-4">
+                  Aguardando confirmação do banco...
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center animate-in zoom-in duration-300">
+                <div className="bg-green-100 p-4 rounded-full mb-4">
+                   <CheckCircle2 className="w-16 h-16 text-green-600" />
+                </div>
+                <h3 className="text-xl font-bold text-green-700">Pagamento Confirmado!</h3>
+                <p className="text-gray-500">Finalizando sua matrícula...</p>
+              </div>
+            )}
+
+            {paymentStatus === "pending" && (
+              <div className="w-full space-y-2">
+                <div className="flex items-center space-x-2">
+                  <div className="grid flex-1 gap-2">
+                    <Button variant="outline" size="sm" className="w-full text-xs text-muted-foreground">
+                      00020126580014BR.GOV.BCB.PIX0136123e4567-e89b...
+                      <Copy className="ml-2 h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Tempo restante: 04:59
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

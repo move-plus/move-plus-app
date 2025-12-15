@@ -54,7 +54,7 @@ const CreateClass = () => {
        const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x300&markers=color:red|${lat},${lng}&key=${apiKey}`;
        setMapUrl(url);
     }
-  }, []); // Array vazio = cria a função uma única vez
+  }, []);
 
   const demandData = location.state as {
     demandId?: string;
@@ -161,7 +161,6 @@ const CreateClass = () => {
   return (
     <div className="min-h-screen bg-gradient-hero">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-8 space-y-4">
           <h1 className="text-4xl md:text-5xl font-bold">
             Cadastrar Nova Aula
@@ -172,7 +171,6 @@ const CreateClass = () => {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Form */}
           <div className="lg:col-span-2">
             <Card className="shadow-medium">
               <CardHeader>
@@ -184,7 +182,6 @@ const CreateClass = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Title */}
                   <div className="space-y-2">
                     <Label htmlFor="title" className="text-base">
                       <FileText className="w-4 h-4 inline mr-2" />
@@ -200,7 +197,6 @@ const CreateClass = () => {
                     />
                   </div>
 
-                  {/* Description */}
                   <div className="space-y-2">
                     <Label htmlFor="description" className="text-base">
                       Descrição
@@ -217,7 +213,6 @@ const CreateClass = () => {
                     />
                   </div>
 
-                  {/* Category and Level */}
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="category" className="text-base">
@@ -240,6 +235,25 @@ const CreateClass = () => {
                           <SelectItem value="water">Hidroginástica</SelectItem>
                           <SelectItem value="dance">Dança</SelectItem>
                           <SelectItem value="stretch">Alongamento</SelectItem>
+                          <SelectItem value="crossfit">CrossFit</SelectItem>
+                          <SelectItem value="functional">Funcional</SelectItem>
+                          <SelectItem value="swimming">Natação</SelectItem>
+                          <SelectItem value="boxing">Boxe</SelectItem>
+                          <SelectItem value="martialarts">Artes Marciais</SelectItem>
+                          <SelectItem value="running">Corrida</SelectItem>
+                          <SelectItem value="cycling">Ciclismo</SelectItem>
+                          <SelectItem value="tennis">Tênis</SelectItem>
+                          <SelectItem value="soccer">Futebol</SelectItem>
+                          <SelectItem value="volleyball">Vôlei</SelectItem>
+                          <SelectItem value="basketball">Basquete</SelectItem>
+                          <SelectItem value="spinning">Spinning</SelectItem>
+                          <SelectItem value="zumba">Zumba</SelectItem>
+                          <SelectItem value="aerobics">Aeróbica</SelectItem>
+                          <SelectItem value="hiit">HIIT</SelectItem>
+                          <SelectItem value="climbing">Escalada</SelectItem>
+                          <SelectItem value="skateboarding">Skate</SelectItem>
+                          <SelectItem value="surfing">Surf</SelectItem>
+                          <SelectItem value="other">Outras</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -270,7 +284,6 @@ const CreateClass = () => {
                     </div>
                   </div>
 
-                  {/* Location */}
                   <div className="space-y-2">
                     <Label htmlFor="location_address" className="text-base">
                       <MapPin className="w-4 h-4 inline mr-2" />
@@ -281,14 +294,12 @@ const CreateClass = () => {
                       defaultValue={formData.location_address}
                     />
                     
-                    {/* Campo Hidden para garantir validação HTML padrão se quiser, ou remova */}
                     <input 
                       type="hidden" 
                       required 
                       value={formData.location_address} 
                     />
 
-                    {/* Preview do Mapa (O "Uau" da banca) */}
                     {mapUrl && (
                       <div className="mt-2 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                           <img src={mapUrl} alt="Localização da turma" className="w-full h-48 object-cover" />
@@ -296,7 +307,6 @@ const CreateClass = () => {
                     )}
                   </div>
 
-                  {/* Schedule */}
                   <div className="space-y-2">
                     <Label htmlFor="schedule" className="text-base">
                       <Calendar className="w-4 h-4 inline mr-2" />
@@ -312,7 +322,6 @@ const CreateClass = () => {
                     />
                   </div>
 
-                  {/* Max Students and Price */}
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="capacity" className="text-base">
@@ -350,7 +359,6 @@ const CreateClass = () => {
                     </div>
                   </div>
 
-                  {/* Submit Button */}
                   <Button
                     type="submit"
                     size="lg"
@@ -364,7 +372,6 @@ const CreateClass = () => {
             </Card>
           </div>
 
-          {/* Sidebar Info */}
           <div className="space-y-6">
             <Card className="shadow-soft">
               <CardHeader>
