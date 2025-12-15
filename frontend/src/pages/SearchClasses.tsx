@@ -89,6 +89,16 @@ const SearchClasses = () => {
     <div className="min-h-screen bg-gradient-hero pb-24">
       <PageHeader title="Encontre Sua Aula" showBackButton={false} />
       <div className="container mx-auto px-4 py-6">
+        
+        {/* Botão para criar demanda */}
+        <div className="mb-6 flex justify-end">
+          <Button
+            onClick={() => navigate("/solicitar-turma")}
+            className="bg-[#25C588] hover:bg-[#1ea871] text-white"
+          >
+            Não encontrou? Solicite uma turma
+          </Button>
+        </div>
 
         {/* Filters */}
         <Card className="mb-8 shadow-soft">
