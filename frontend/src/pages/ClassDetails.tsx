@@ -268,7 +268,7 @@ const ClassDetails = () => {
     try {
       const { data, error } = await supabase
         .from("forum_messages")
-        .select(`*, profiles:user_id (full_name)`)
+        .select(`*`)
         .eq("class_id", id)
         .order("created_at", { ascending: false });
 
