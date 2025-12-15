@@ -29,10 +29,30 @@ import {
   BarChart3,
   Calendar,
   MessageCircle,
+  Phone,
+  Mail,
+  FileText,
+  MapPin as MapPinIcon,
+  AlertCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+interface StudentDetails {
+  id: string;
+  health_certificate_url?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+}
 
 interface Student {
   id: string;
@@ -51,7 +71,12 @@ interface FrequencyData {
   date: string;
   profiles: {
     full_name: string;
+    avatar_url?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    address?: any | null; 
   } | null;
+  students: StudentDetails | null;
   absences?: number;
   total_classes?: number;
   attendance_rate?: number;
@@ -80,7 +105,11 @@ const ClassManagement = () => {
   const [selectedDate, setSelectedDate] = useState(
     format(new Date(), "yyyy-MM-dd")
   );
+  
   const [frequencyData, setFrequencyData] = useState<FrequencyData[]>([]);
+
+  const [selectedStudent, setSelectedStudent] = useState<FrequencyData | null>(null);
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
 
   useEffect(() => {
     loadClassData();
@@ -88,10 +117,10 @@ const ClassManagement = () => {
     loadFrequencyData();
   }, [id]);
 
-  useEffect(() => {
-    if (frequencyData.length > 0) {
-    }
-  }, [frequencyData]);
+  const handleOpenStudentDetails = (student: FrequencyData) => {
+    setSelectedStudent(student);
+    setIsStudentModalOpen(true);
+  };
 
   const loadClassData = async () => {
     const { data } = await supabase
@@ -181,66 +210,40 @@ const ClassManagement = () => {
 
   const loadFrequencyData = async () => {
     try {
-      const { data: frequencyRecords, error: freqError } = await supabase
-        .from("frequency")
-        .select(`
-          *,
-          profiles:user_id (
-            full_name
-          )
-        `)
-        .eq("class_id", id);
-
-      if (freqError) {
-        console.error("Error loading frequency data:", freqError);
-        return;
-      }
-
-      const { data: enrollments } = await supabase
+      const { data: enrollments, error: enrollError } = await supabase
         .from("enrollments")
         .select("user_id")
         .eq("class_id", id);
 
+      if (enrollError) throw enrollError;
+
+      const studentIds = enrollments?.map((e) => e.user_id) || [];
+
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, email, phone")
+        .in("id", studentIds);
+        
+      if (profileError) throw profileError;
+
+      const { data: studentsData, error: studentsError } = await supabase
+        .from("students")
+        .select("id, health_certificate_url, emergency_contact_name, emergency_contact_phone") 
+        .in("id", studentIds);
+
+      if (studentsError) console.warn("Erro ao buscar dados complementares:", studentsError);
+
+      const { data: frequencyRecords, error: freqError } = await supabase
+        .from("frequency")
+        .select("user_id, date")
+        .eq("class_id", id);
+
+      if (freqError) throw freqError;
+
       const uniqueDates = new Set(frequencyRecords?.map(f => f.date) || []);
       const totalClasses = uniqueDates.size;
-
-      const studentMap = new Map<string, FrequencyData>();
-
-      enrollments?.forEach(enrollment => {
-        const userId = enrollment.user_id;
-        if (!studentMap.has(userId)) {
-          studentMap.set(userId, {
-            id: userId,
-            user_id: userId,
-            class_id: id!,
-            date: "",
-            profiles: null,
-            absences: totalClasses,
-            total_classes: totalClasses,
-            attendance_rate: 0,
-          });
-        }
-      });
-
-      frequencyRecords?.forEach(record => {
-        const userId = record.user_id;
-        const existing = studentMap.get(userId);
-        
-        if (existing) {
-          if (!existing.profiles && record.profiles) {
-            existing.profiles = record.profiles;
-          }
-        } else {
-          studentMap.set(userId, {
-            ...record,
-            absences: totalClasses,
-            total_classes: totalClasses,
-            attendance_rate: 0,
-          });
-        }
-      });
-
       const presenceCount = new Map<string, number>();
+      
       frequencyRecords?.forEach(record => {
         presenceCount.set(
           record.user_id,
@@ -248,15 +251,24 @@ const ClassManagement = () => {
         );
       });
 
-      studentMap.forEach((student, userId) => {
+      const consolidatedData = studentIds.map((userId) => {
+        const profile = profiles?.find((p) => p.id === userId);
+        const studentInfo = studentsData?.find((s) => s.user_id === userId);
         const presences = presenceCount.get(userId) || 0;
-        student.absences = totalClasses - presences;
-        student.attendance_rate = totalClasses > 0 
-          ? (presences / totalClasses) * 100 
-          : 0;
+        
+        return {
+          id: userId,
+          user_id: userId,
+          class_id: id!,
+          date: "",
+          profiles: profile || { full_name: "Desconhecido" },
+          students: (studentInfo as unknown as StudentDetails) || null,
+          absences: totalClasses - presences,
+          total_classes: totalClasses,
+          attendance_rate: totalClasses > 0 ? (presences / totalClasses) * 100 : 0,
+        };
       });
 
-      const consolidatedData = Array.from(studentMap.values());
       setFrequencyData(consolidatedData);
     } catch (error) {
       console.error("Error in loadFrequencyData:", error);
@@ -368,7 +380,7 @@ const ClassManagement = () => {
               <CardHeader>
                 <CardTitle>Lista de Chamada</CardTitle>
                 <CardDescription>
-                  Selecione a data e marque os alunos presentes
+                  Selecione a data e marque os alunos presentes. Clique no nome para ver detalhes.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -391,34 +403,46 @@ const ClassManagement = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {students.map((student) => (
-                      <TableRow key={student.id}>
-                        <TableCell className="font-medium">
-                          {student.full_name}
-                        </TableCell>
-                        
-                        <TableCell className="text-center">
-                           <Badge 
-                             variant={student.payment_status === 'active' ? 'outline' : 'destructive'} 
-                             className={student.payment_status === 'active' ? "border-green-600 text-green-700 bg-green-50" : ""}
-                           >
-                             {student.payment_status === 'active' ? 'Em dia' : 'Pendente'}
-                           </Badge>
-                        </TableCell>
+                    {students.map((student) => {
+                      const fullStudentData = frequencyData.find(f => f.user_id === student.id);
 
-                        <TableCell className="text-center">
-                          <Checkbox
-                            checked={attendance[student.id] || false}
-                            onCheckedChange={(checked) =>
-                              setAttendance((prev) => ({
-                                ...prev,
-                                [student.id]: checked as boolean,
-                              }))
-                            }
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                      return (
+                        <TableRow 
+                          key={student.id}
+                          className="cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => {
+                            if (fullStudentData) handleOpenStudentDetails(fullStudentData);
+                          }}
+                        >
+                          <TableCell className="font-medium">
+                            <span className="underline decoration-dotted underline-offset-4 decoration-muted-foreground/30">
+                              {student.full_name}
+                            </span>
+                          </TableCell>
+                          
+                          <TableCell className="text-center">
+                             <Badge 
+                               variant={student.payment_status === 'active' ? 'outline' : 'destructive'} 
+                               className={student.payment_status === 'active' ? "border-green-600 text-green-700 bg-green-50" : ""}
+                             >
+                               {student.payment_status === 'active' ? 'Em dia' : 'Pendente'}
+                             </Badge>
+                          </TableCell>
+
+                          <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={attendance[student.id] || false}
+                              onCheckedChange={(checked) =>
+                                setAttendance((prev) => ({
+                                  ...prev,
+                                  [student.id]: checked as boolean,
+                                }))
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
                 <Button
@@ -437,7 +461,7 @@ const ClassManagement = () => {
               <CardHeader>
                 <CardTitle>Frequência Consolidada</CardTitle>
                 <CardDescription>
-                  Visão geral da frequência de todos os alunos
+                  Visão geral da frequência e cadastro. Clique para ver detalhes.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -468,9 +492,19 @@ const ClassManagement = () => {
                       </TableRow>
                     ) : (
                       frequencyData.map((student) => (
-                        <TableRow key={student.id}>
-                          <TableCell className="font-medium">
-                            {student.profiles?.full_name || "Sem nome"}
+                        <TableRow 
+                          key={student.id} 
+                          className="cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => handleOpenStudentDetails(student)}
+                        >
+                          <TableCell className="font-medium flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={student.profiles?.avatar_url || ""} />
+                              <AvatarFallback>{student.profiles?.full_name?.charAt(0) || "A"}</AvatarFallback>
+                            </Avatar>
+                            <span className="underline decoration-dotted underline-offset-4 text-primary">
+                              {student.profiles?.full_name || "Sem nome"}
+                            </span>
                           </TableCell>
                           <TableCell className="text-center">
                             {student.total_classes || 0}
@@ -498,9 +532,10 @@ const ClassManagement = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() =>
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 navigate(`/chat?contact=${student.user_id}`)
-                              }
+                              }}
                             >
                               <MessageCircle className="h-4 w-4" />
                             </Button>
@@ -563,6 +598,110 @@ const ClassManagement = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={isStudentModalOpen} onOpenChange={setIsStudentModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Aluno</DialogTitle>
+            <DialogDescription>Informações de cadastro e contato.</DialogDescription>
+          </DialogHeader>
+
+          {selectedStudent && selectedStudent.profiles && (
+            <div className="flex flex-col items-center space-y-6 py-4">
+              <div className="flex flex-col items-center text-center">
+                <Avatar className="h-24 w-24 border-4 border-white shadow-lg mb-4">
+                  <AvatarImage src={selectedStudent.profiles.avatar_url || ""} />
+                  <AvatarFallback className="text-2xl bg-gray-100">
+                    {selectedStudent.profiles.full_name?.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <h3 className="text-xl font-bold">{selectedStudent.profiles.full_name}</h3>
+                <Badge 
+                  variant={selectedStudent.attendance_rate! >= 75 ? "outline" : "destructive"} 
+                  className="mt-2"
+                >
+                  Frequência: {selectedStudent.attendance_rate!.toFixed(1)}%
+                </Badge>
+              </div>
+              <div className="w-full space-y-4 bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">
+                    {selectedStudent.students?.phone || selectedStudent.profiles.phone || "Telefone não informado"}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm truncate">
+                    {selectedStudent.profiles.email || "Email não informado"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <MapPinIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">
+                    {typeof selectedStudent.students?.address === 'object' 
+                      ? `${selectedStudent.students?.address?.street || 'Endereço'}, ${selectedStudent.students?.address?.number || ''}`
+                      : (selectedStudent.students?.address || selectedStudent.profiles.address || "Endereço não informado")
+                    }
+                  </span>
+                </div>
+                <div className="pt-2 mt-2 border-t border-gray-200">
+                  <p className="text-xs font-semibold text-red-500 mb-1 uppercase">Em caso de emergência</p>
+                  <div className="flex items-center gap-3">
+                    <div className="bg-red-100 p-1.5 rounded-full">
+                      <Phone className="h-3 w-3 text-red-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-800">
+                      {selectedStudent.students?.emergency_contact || "Não informado"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="w-full">
+                <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                  Documentação
+                </p>
+                {selectedStudent.students?.health_certificate_url ? (
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start h-12"
+                    asChild
+                  >
+                    <a 
+                      href={selectedStudent.students.health_certificate_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="h-5 w-5 mr-3 text-blue-600" />
+                      <div className="flex flex-col items-start text-left">
+                        <span className="text-sm font-medium">Visualizar Atestado Médico</span>
+                        <span className="text-xs text-muted-foreground">Clique para abrir</span>
+                      </div>
+                    </a>
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2 p-3 border border-dashed rounded-md text-muted-foreground bg-gray-50">
+                    <AlertCircle className="h-5 w-5 text-yellow-500" />
+                    <span className="text-sm">Atestado pendente.</span>
+                  </div>
+                )}
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={() => {
+                  navigate(`/chat?contact=${selectedStudent.user_id}`);
+                  setIsStudentModalOpen(false);
+                }}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Enviar Mensagem
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
