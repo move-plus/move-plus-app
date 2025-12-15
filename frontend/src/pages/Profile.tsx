@@ -281,10 +281,64 @@ export default function Profile() {
       return;
     }
 
+    setProfileData((prev: any) => ({ ...prev, avatar_url: publicUrl }));
+
     toast({
       title: "Foto atualizada",
       description: "Sua foto de perfil foi atualizada com sucesso.",
     });
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
+    }
+    
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${authUser?.id}/${fileName}`;
+
+    try {
+      setLoading(true);
+
+      const { error: uploadError } = await supabase.storage
+        .from('health_certificates')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: signedUrlData } = await supabase.storage
+        .from('health_certificates')
+        .createSignedUrl(filePath, 3600);
+
+      if (!signedUrlData?.signedUrl) throw new Error("Erro ao gerar link seguro");
+
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({ 
+            health_certificate_url: signedUrlData.signedUrl 
+        })
+        .eq('id', authUser?.id);
+
+      if (updateError) throw updateError;
+
+      toast({ title: "Sucesso!", description: "Certificado enviado." });
+      
+      setStudentData((prev: any) => ({
+        ...prev,
+        health_certificate_url: signedUrlData.signedUrl
+      }));
+
+    } catch (error: any) {
+      toast({ 
+          title: "Erro no upload", 
+          description: error.message, 
+          variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -591,27 +645,40 @@ export default function Profile() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="health_certificate"
-                      className="flex items-center gap-2"
-                    >
+                    <Label htmlFor="health_certificate" className="flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Certificado de Saúde
                     </Label>
+
+                    {/* 1. Link para Visualizar (O que você já fez) */}
                     {studentData.health_certificate_url ? (
-                      <a
-                        href={studentData.health_certificate_url || ""}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline"
-                      >
-                        Visualizar Certificado
-                      </a>
+                      <div className="flex items-center gap-2 mb-2">
+                        <a
+                          href={studentData.health_certificate_url || ""}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline text-sm"
+                        >
+                          Visualizar Certificado Atual
+                        </a>
+                      </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground mb-2">
                         Nenhum certificado anexado.
                       </p>
                     )}
+
+                    {/* 2. Input para Fazer Upload (O que falta para "receber" do usuário) */}
+                    <Input
+                      id="health_certificate"
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png" // Restringe tipos de arquivo
+                      onChange={handleFileUpload}   // <--- Função que envia pro Supabase
+                      className="cursor-pointer"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Formatos aceitos: PDF, JPG, PNG (Max 5MB)
+                    </p>
                   </div>
                 </div>
               )}
