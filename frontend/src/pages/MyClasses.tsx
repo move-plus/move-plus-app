@@ -183,7 +183,7 @@ const MyClasses = () => {
                 </div>
                 <p className="text-xl font-semibold text-[#1756AC]">Nenhuma aula agendada</p>
                 <button
-                  onClick={() => navigate("/buscar-aulas")}
+                  onClick={() => navigate("/buscar-turmas")}
                   className="text-[#5F94E2] hover:underline text-sm"
                 >
                   Encontrar turmas disponíveis
@@ -247,7 +247,7 @@ const MyClasses = () => {
                 </div>
                 <p className="text-xl font-semibold text-[#1756AC]">Nenhuma aula agendada</p>
                 <button
-                  onClick={() => navigate("/buscar-aulas")}
+                  onClick={() => navigate("/buscar-turmas")}
                   className="text-[#5F94E2] hover:underline text-sm"
                 >
                   Encontrar turmas disponíveis
