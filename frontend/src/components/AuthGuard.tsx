@@ -61,6 +61,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }
 
+  if (isPublicPrivateRoute) {
+    if (user && !role) {
+      return <Navigate to="/onboarding" replace />;
+    }
+    return <>{children}</>;
+  }
+
   else if (isGuestOnlyRoute) {
     if (user) {
       if (role === "student") return <Navigate to="/minhas-turmas" replace />;

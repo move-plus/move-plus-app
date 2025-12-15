@@ -22,6 +22,7 @@ export function Home() {
       const { data } = await supabase
         .from('classes')
         .select(`*, profiles(full_name), enrollments(count)`)
+        .limit(6)
 
       if (data) setClasses(data)
     }
@@ -29,16 +30,9 @@ export function Home() {
   }, [])
 
   return (
-    // min-h-screen garante que ocupa a tela toda, bg-slate-50 para suavidade
     <div className="min-h-screen bg-slate-50 font-sans text-gray-900 flex flex-col justify-between overflow-x-hidden">
-
-      {/* CONTAINER PRINCIPAL: Grid de 2 Colunas */}
       <div className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start relative z-10">
-           
-          {/* --- COLUNA DA ESQUERDA: CONTROLES (Fixo no Desktop) --- */}
           <div className="lg:col-span-5 flex flex-col h-full space-y-6 lg:sticky lg:top-24">
-             
-            {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold w-fit">
               <Heart className="w-3 h-3 fill-blue-800" />
               Saúde e Bem-Estar para Todos
@@ -56,7 +50,6 @@ export function Home() {
 
             <div className="bg-white p-5 rounded-2xl shadow-xl border border-slate-100 relative z-20">
               <div className="space-y-3">
-                {/* Input 1 */}
                 <div className="relative group">
                   <input 
                     type="text" 
@@ -65,7 +58,6 @@ export function Home() {
                   />
                 </div>
 
-                {/* Input 2 */}
                 <div className="relative group">
                   <input 
                     type="text" 
@@ -80,7 +72,6 @@ export function Home() {
               </Button>
             </div>
 
-            {/* Prova Social Rápida */}
             <div className="flex items-center gap-4 text-sm text-slate-500 pt-2">
                <div className="flex -space-x-2">
                   {[1,2,3].map(i => (
@@ -93,15 +84,13 @@ export function Home() {
             </div>
           </div>
 
-          {/* --- COLUNA DA DIREITA: OS CARDS (Vitrine Imediata) --- */}
-          <div className="lg:col-span-7 pb-20"> {/* pb-20 para dar espaço visual do footer */}
+          <div className="lg:col-span-7 pb-20">
             <div className="flex items-center justify-between mb-4">
                <Link to="/buscar-turmas" className="text-blue-600 text-sm font-semibold flex items-center hover:underline">
                  Ver todas <ArrowRight className="w-4 h-4 ml-1"/>
                </Link>
             </div>
 
-            {/* Grid de Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {classes.length === 0 ? (
                  <div className="col-span-2 p-10 text-center bg-white rounded-xl border border-dashed text-slate-400">

@@ -66,11 +66,14 @@ export default function LoginPhone() {
       
 
       toast({ title: "Bem-vindo ao Move+!" });
+      
+      const destination = location.state?.from?.pathname || "/";
+      console.log("Navegando para:", destination);
 
-      let from = location.state?.from?.pathname || "/onboarding";
-      location.state?.from?.pathname == undefined ? from = "/" : from = from;
-
-      navigate(from, { replace: true });
+      navigate(destination, { 
+        replace: true,
+        state: location.state 
+      });
 
     } catch (error: any) {
       toast({ title: "Código inválido", variant: "destructive" });
